@@ -43,6 +43,15 @@ const resources = {
       "buy_now": "Buy Now",
       "owned": "Owned",
       
+      "checkout_title": "Secure Checkout",
+      "order_summary": "Order Summary",
+      "total": "Total",
+      "payment_method": "Payment Method",
+      "card_number": "Card Number",
+      "pay_now": "Complete Purchase",
+      "mock_notice": "Note: This is a preview environment. No real charges will be made. Clicking the button will simulate a successful webhook payment and grant you access.",
+      "pix_key": "Pix Key",
+      
       "quick_add": "Quick Add",
       "add_btn": "Add",
       "del_btn": "Del",
@@ -257,6 +266,15 @@ const resources = {
       "price_features_sub": "Acesso vitalício a todos os 6 planners premium",
       "buy_now": "Comprar",
       "owned": "Adquirido",
+      
+      "checkout_title": "Checkout Seguro",
+      "order_summary": "Resumo do Pedido",
+      "total": "Total",
+      "payment_method": "Método de Pagamento",
+      "card_number": "Número do Cartão",
+      "pay_now": "Finalizar Compra",
+      "mock_notice": "Nota: Este é um ambiente de demonstração. Nenhuma cobrança real será processada. Ao clicar em comprar simularemos a aprovação e o seu acesso será liberado.",
+      "pix_key": "Chave Pix (Copie e Cole)",
       
       // Planners App Shared
       "quick_add": "Adicionar Rápido",

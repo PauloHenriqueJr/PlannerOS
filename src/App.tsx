@@ -10,6 +10,7 @@ import { useAuth, AppProvider } from './store';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import PlannerApp from './pages/PlannerApp';
+import Checkout from './pages/Checkout';
 
 function Header() {
   const { user, logout } = useAuth();
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/planner/:id" element={<PlannerApp />} />
+              <Route path="/checkout/:productId" element={<Checkout />} />
             </Routes>
           </main>
         </div>

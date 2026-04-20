@@ -4,18 +4,25 @@ import { useAuth, usePurchases, PRODUCTS } from '../store';
 
 export default function Home() {
   const { user } = useAuth();
-  const { purchasedIds, buyPlanner } = usePurchases();
+  const { purchasedIds } = usePurchases();
 
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const isPt = i18n.language === 'pt';
+
+  const formatPrice = (usd: number, brl: number) => {
+    return isPt 
+      ? `R$ ${brl.toFixed(2).replace('.', ',')}` 
+      : `$${usd.toFixed(2)}`;
+  };
 
   const handleBuy = (id: string) => {
     if (!user) {
       navigate('/login');
       return;
     }
-    buyPlanner(id);
-    navigate('/dashboard');
+    navigate(`/checkout/${id}`);
   };
 
   const handlePro = () => {
@@ -23,8 +30,7 @@ export default function Home() {
       navigate('/login');
       return;
     }
-    PRODUCTS.forEach(p => buyPlanner(p.id));
-    navigate('/dashboard');
+    navigate('/checkout/pro');
   }
 
   return (
@@ -95,7 +101,9 @@ export default function Home() {
               
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="text-[10px] uppercase font-bold tracking-widest text-white/50">{t('price_sub_p')}</div>
+                  <div className="text-[10px] uppercase font-bold tracking-widest text-white/50">
+                    {formatPrice(9.90, 29.90)} / {isPt ? 'mês' : 'month'}
+                  </div>
                   <div className="bg-accent/20 text-accent px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">BEST VALUE</div>
                 </div>
                 
@@ -143,7 +151,7 @@ export default function Home() {
                   
                   <div className="flex items-center justify-between mt-auto pt-6 border-t border-line/50">
                     <span className="text-lg sm:text-xl font-serif italic text-accent">
-                      ${product.price.toFixed(2)}
+                      {formatPrice(product.priceUsd, product.priceBrl)}
                     </span>
                     {isPurchased ? (
                       <Link 

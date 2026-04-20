@@ -10,19 +10,21 @@ import { auth, db, googleProvider } from './firebase';
 
 export interface PlannerProduct {
   id: string;
-  name: string;
-  description: string;
-  price: number;
+  nameKey: string;
+  descKey: string;
+  priceUsd: number;
+  priceBrl: number;
   image: string;
-  tag: string;
+  tagKey: string;
 }
 
-export const PRODUCTS = [
+export const PRODUCTS: PlannerProduct[] = [
   {
     id: 'adhd-planner-2026',
     nameKey: 'prod_adhd_name',
     descKey: 'prod_adhd_desc',
-    price: 29.90,
+    priceUsd: 14.90,
+    priceBrl: 47.90,
     image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_adhd_tag'
   },
@@ -30,7 +32,8 @@ export const PRODUCTS = [
     id: 'it-girl-wellness',
     nameKey: 'prod_itgirl_name',
     descKey: 'prod_itgirl_desc',
-    price: 34.90,
+    priceUsd: 12.90,
+    priceBrl: 37.90,
     image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_itgirl_tag'
   },
@@ -38,7 +41,8 @@ export const PRODUCTS = [
     id: 'undated-digital-planner',
     nameKey: 'prod_undated_name',
     descKey: 'prod_undated_desc',
-    price: 24.90,
+    priceUsd: 14.90,
+    priceBrl: 47.90,
     image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_undated_tag'
   },
@@ -46,7 +50,8 @@ export const PRODUCTS = [
     id: 'small-business-os',
     nameKey: 'prod_smallbiz_name',
     descKey: 'prod_smallbiz_desc',
-    price: 49.90,
+    priceUsd: 19.90,
+    priceBrl: 67.90,
     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_smallbiz_tag'
   },
@@ -54,7 +59,8 @@ export const PRODUCTS = [
     id: 'meal-prep-weekly',
     nameKey: 'prod_meal_name',
     descKey: 'prod_meal_desc',
-    price: 19.90,
+    priceUsd: 9.90,
+    priceBrl: 27.90,
     image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_meal_tag'
   },
@@ -62,7 +68,8 @@ export const PRODUCTS = [
     id: 'weight-loss-tracker',
     nameKey: 'prod_weight_name',
     descKey: 'prod_weight_desc',
-    price: 14.90,
+    priceUsd: 9.90,
+    priceBrl: 27.90,
     image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
     tagKey: 'prod_weight_tag'
   }

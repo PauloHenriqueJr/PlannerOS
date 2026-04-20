@@ -17,17 +17,17 @@ export default function Home() {
 
   return (
     <div className="w-full py-12 md:py-24">
-      <div className="max-w-7xl mx-auto px-8">
-        <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
-          <h1 className="font-serif text-5xl md:text-7xl italic text-ink tracking-tight">
-            Stop losing your PDFs.<br/>Start actually planning.
+      <div className="max-w-7xl mx-auto px-4 sm:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-16 md:mb-20 space-y-6">
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-7xl italic text-ink tracking-tight leading-tight">
+            Stop losing your PDFs.<br className="hidden sm:block"/>Start actually planning.
           </h1>
-          <p className="text-lg md:text-xl text-ink opacity-60">
+          <p className="text-base sm:text-lg md:text-xl text-ink opacity-60 px-4">
             Native, interactive digital planners that sync across your devices. No more copying, no more losing files. Use them directly in our app.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
           {PRODUCTS.map(product => {
             const isPurchased = purchasedIds.includes(product.id);
 
@@ -44,12 +44,12 @@ export default function Home() {
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <div className="p-8 flex flex-col flex-1">
-                  <h3 className="font-serif text-2xl font-bold mb-2">{product.name}</h3>
-                  <p className="opacity-60 mb-8 flex-1 text-sm leading-relaxed">{product.description}</p>
+                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold mb-2">{product.name}</h3>
+                  <p className="opacity-60 mb-6 sm:mb-8 flex-1 text-xs sm:text-sm leading-relaxed">{product.description}</p>
                   
                   <div className="flex items-center justify-between mt-auto">
-                    <span className="text-xl font-serif italic text-accent">
+                    <span className="text-lg sm:text-xl font-serif italic text-accent">
                       ${product.price.toFixed(2)}
                     </span>
                     {isPurchased ? (

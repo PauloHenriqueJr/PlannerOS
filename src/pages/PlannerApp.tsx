@@ -27,45 +27,53 @@ export default function PlannerApp() {
   if (!product) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="flex h-full w-full">
+    <div className="flex flex-col md:flex-row h-full w-full">
+      {/* Mobile Topbar */}
+      <div className="md:hidden flex items-center justify-between p-4 border-b border-line bg-white shrink-0 shadow-sm z-10">
+        <Link to="/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1">
+          &larr; Back
+        </Link>
+        <span className="font-serif italic font-bold text-sm truncate max-w-[200px]">{product.name}</span>
+      </div>
+
       {/* Sidebar Navigator */}
-      <aside className="w-64 border-r border-line bg-sidebar p-6 flex flex-col shrink-0">
+      <aside className="hidden md:flex w-64 border-r border-line bg-sidebar p-6 flex-col shrink-0 overflow-y-auto">
         <div className="mb-8">
           <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-accent mb-4">My Dashboard</h3>
           <ul className="space-y-3">
             <li className="flex items-center p-2 bg-white rounded-lg border border-line text-sm font-semibold">
-              <span className="w-2 h-2 rounded-full bg-accent mr-3"></span>
-              {product.name}
+              <span className="w-2 h-2 rounded-full bg-accent mr-3 shrink-0"></span>
+              <span className="truncate">{product.name}</span>
             </li>
             <li className="flex items-center p-2 text-sm opacity-60 hover:opacity-100 transition-all cursor-pointer">
                <Link to="/dashboard" className="flex items-center w-full">
-                 <span className="w-2 h-2 rounded-full border border-line mr-3"></span>
+                 <span className="w-2 h-2 rounded-full border border-line mr-3 shrink-0"></span>
                  Back to library
                </Link>
             </li>
           </ul>
         </div>
 
-        <div className="mt-auto pt-48">
+        <div className="mt-auto pt-10 lg:pt-48">
           <div className="p-4 bg-accent text-white rounded-xl">
             <p className="text-xs font-serif italic mb-2">Limited Pack</p>
             <h4 className="text-sm font-bold leading-tight mb-3">Summer Wellness Bundle 2026</h4>
-            <Link to="/" className="w-full py-2 bg-white text-accent rounded text-[10px] font-bold uppercase tracking-wider block text-center">Shop Now</Link>
+            <Link to="/" className="w-full py-2 bg-white text-accent rounded text-[10px] font-bold uppercase tracking-wider block text-center transition-opacity hover:opacity-90">Shop Now</Link>
           </div>
         </div>
       </aside>
 
       {/* Main Planner Canvas */}
-      <main className="flex-1 p-10 flex flex-col items-center bg-canvas h-full overflow-hidden">
-        <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-2xl h-full flex overflow-hidden border border-white/20">
+      <main className="flex-1 p-0 sm:p-6 md:p-10 flex flex-col items-center bg-canvas h-[calc(100vh-3.5rem)] md:h-full overflow-hidden">
+        <div className="w-full max-w-4xl bg-white sm:rounded-xl md:rounded-[2rem] shadow-xl md:shadow-2xl h-full flex flex-col md:flex-row overflow-hidden border border-white/20">
           
           {/* Tabs Side */}
-          <div className="w-12 bg-tab flex flex-col pt-12 space-y-4 shrink-0">
+          <div className="w-full md:w-12 bg-tab flex flex-row md:flex-col pt-0 md:pt-12 space-y-0 md:space-y-4 shrink-0 overflow-x-auto overflow-y-hidden border-b md:border-b-0 border-line/20">
             <button 
               onClick={() => setActiveTab('today')}
               className={cn(
-                "h-20 w-12 rounded-l-md -mr-1 flex items-center justify-center [writing-mode:vertical-lr] text-[10px] font-bold uppercase tracking-tighter transition-all",
-                activeTab === 'today' ? "bg-white text-ink" : "opacity-60 text-ink/80 hover:bg-white/50"
+                "flex-1 md:flex-none h-12 md:h-20 w-auto md:w-12 md:rounded-l-md md:-mr-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-tighter transition-all px-4 md:px-0 md:[writing-mode:vertical-lr]",
+                activeTab === 'today' ? "bg-white text-ink border-b-2 md:border-b-0 border-accent md:border-transparent" : "opacity-60 text-ink/80 hover:bg-white/50"
               )}
             >
               Focus
@@ -73,8 +81,8 @@ export default function PlannerApp() {
             <button 
               onClick={() => setActiveTab('braindump')}
               className={cn(
-                "h-32 w-12 rounded-l-md -mr-1 flex items-center justify-center [writing-mode:vertical-lr] text-[10px] font-bold uppercase tracking-tighter transition-all",
-                activeTab === 'braindump' ? "bg-white text-ink" : "opacity-60 text-ink/80 hover:bg-white/50"
+                "flex-1 md:flex-none h-12 md:h-32 w-auto md:w-12 md:rounded-l-md md:-mr-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-tighter transition-all px-4 md:px-0 md:[writing-mode:vertical-lr]",
+                activeTab === 'braindump' ? "bg-white text-ink border-b-2 md:border-b-0 border-accent md:border-transparent" : "opacity-60 text-ink/80 hover:bg-white/50"
               )}
             >
               Braindump
@@ -82,15 +90,15 @@ export default function PlannerApp() {
             <button 
               onClick={() => setActiveTab('habits')}
               className={cn(
-                "h-24 w-12 rounded-l-md -mr-1 flex items-center justify-center [writing-mode:vertical-lr] text-[10px] font-bold uppercase tracking-tighter transition-all",
-                activeTab === 'habits' ? "bg-white text-ink" : "opacity-60 text-ink/80 hover:bg-white/50"
+                "flex-1 md:flex-none h-12 md:h-24 w-auto md:w-12 md:rounded-l-md md:-mr-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-tighter transition-all px-4 md:px-0 md:[writing-mode:vertical-lr]",
+                activeTab === 'habits' ? "bg-white text-ink border-b-2 md:border-b-0 border-accent md:border-transparent" : "opacity-60 text-ink/80 hover:bg-white/50"
               )}
             >
               Habits
             </button>
           </div>
 
-          <div className="flex-1 p-12 overflow-auto relative">
+          <div className="flex-1 p-4 sm:p-8 md:p-12 overflow-auto relative flex flex-col h-full">
             {activeTab === 'today' && <TodayView plannerId={id} userId={user.id} />}
             {activeTab === 'braindump' && <BrainDumpView plannerId={id} userId={user.id} />}
             {activeTab === 'habits' && <HabitsView plannerId={id} userId={user.id} />}
@@ -140,18 +148,18 @@ function TodayView({ plannerId, userId }: { plannerId: string, userId: string })
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="flex justify-between items-start mb-10">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 md:mb-10 gap-4">
         <div>
-          <h1 className="text-4xl font-serif italic text-ink">Today's Focus</h1>
-          <p className="text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • Mindfulness & Momentum</p>
+          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">Today's Focus</h1>
+          <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • Mindfulness & Momentum</p>
         </div>
         <div className="flex space-x-2">
-          <button className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-sm font-serif italic hover:bg-sidebar transition-colors">W</button>
-          <button className="w-10 h-10 rounded-full border border-line flex items-center justify-center text-sm hover:bg-sidebar transition-colors opacity-50">...</button>
+          <button className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-xs md:text-sm font-serif italic hover:bg-sidebar transition-colors">W</button>
+          <button className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-xs md:text-sm hover:bg-sidebar transition-colors opacity-50">...</button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10">
         {/* Column 1 */}
         <div className="space-y-8">
           <div>
@@ -245,20 +253,20 @@ function BrainDumpView({ plannerId, userId }: { plannerId: string, userId: strin
 
   return (
     <div className="animate-in fade-in duration-500 h-full flex flex-col">
-      <div className="flex justify-between items-start mb-10 shrink-0">
+      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
         <div>
-          <h1 className="text-4xl font-serif italic text-ink">Brain Dump Area</h1>
-          <p className="text-sm opacity-50">Clear the mind to focus on the next right step.</p>
+          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">Brain Dump Area</h1>
+          <p className="text-xs md:text-sm opacity-50">Clear the mind to focus on the next right step.</p>
         </div>
       </div>
       
-      <div className="flex-1 flex flex-col pb-8">
-        <label className="text-[10px] uppercase tracking-widest font-bold text-accent block mb-3">Workspace</label>
+      <div className="flex-1 flex flex-col pb-4 md:pb-8 min-h-[300px]">
+        <label className="text-[10px] uppercase tracking-widest font-bold text-accent block mb-2 md:mb-3">Workspace</label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Start writing here..."
-          className="flex-1 w-full border border-line bg-sidebar rounded-lg p-6 text-sm font-serif leading-relaxed text-ink focus:outline-none focus:border-accent transition-colors resize-none shadow-inner"
+          className="flex-1 w-full border border-line bg-sidebar rounded-lg p-4 md:p-6 text-sm font-serif leading-relaxed text-ink focus:outline-none focus:border-accent transition-colors resize-none shadow-inner"
         />
       </div>
     </div>
@@ -315,16 +323,16 @@ function HabitsView({ plannerId, userId }: { plannerId: string, userId: string }
   });
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="flex justify-between items-start mb-10">
+    <div className="animate-in fade-in duration-500 flex flex-col h-full">
+      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
         <div>
-          <h1 className="text-4xl font-serif italic text-ink">Habit Tracker</h1>
-          <p className="text-sm opacity-50">Build momentum with daily actions.</p>
+          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">Habit Tracker</h1>
+          <p className="text-xs md:text-sm opacity-50">Build momentum with daily actions.</p>
         </div>
       </div>
 
-      <div className="mb-10 overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[500px]">
+      <div className="mb-8 md:mb-10 overflow-x-auto pb-4">
+        <table className="w-full text-left border-collapse min-w-[400px] md:min-w-[500px]">
           <thead>
             <tr>
               <th className="pb-4 text-[10px] uppercase tracking-widest font-bold text-accent w-1/3">Dopamine Trackers</th>

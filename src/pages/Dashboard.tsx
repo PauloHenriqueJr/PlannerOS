@@ -12,15 +12,15 @@ export default function Dashboard() {
   const purchasedProducts = PRODUCTS.filter(p => purchasedIds.includes(p.id));
 
   return (
-    <div className="max-w-7xl w-full mx-auto px-8 py-12">
-      <div className="mb-12 pb-8 border-b border-line">
-        <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-accent mb-4">My Overview</h3>
-        <h1 className="font-serif text-4xl italic text-ink">Welcome back, {user.name}.</h1>
+    <div className="max-w-7xl w-full mx-auto px-4 sm:px-8 py-8 md:py-12">
+      <div className="mb-8 md:mb-12 pb-6 md:pb-8 border-b border-line">
+        <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-accent mb-2 md:mb-4">My Overview</h3>
+        <h1 className="font-serif text-3xl md:text-4xl italic text-ink">Welcome back, {user.name}.</h1>
       </div>
 
       {purchasedProducts.length === 0 ? (
-        <div className="text-center py-24 bg-white rounded-[2rem] border border-line shadow-2xl">
-          <p className="text-ink opacity-50 mb-6">You haven't purchased any planners yet.</p>
+        <div className="text-center py-16 md:py-24 px-4 bg-white rounded-2xl md:rounded-[2rem] border border-line shadow-xl md:shadow-2xl">
+          <p className="text-ink opacity-50 mb-6 text-sm md:text-base">You haven't purchased any planners yet.</p>
           <Link 
             to="/"
             className="inline-flex items-center text-[10px] uppercase tracking-widest font-bold bg-accent text-white px-6 py-3 rounded hover:opacity-90 transition-opacity"
@@ -29,7 +29,7 @@ export default function Dashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
           {purchasedProducts.map(product => (
             <Link 
               key={product.id}

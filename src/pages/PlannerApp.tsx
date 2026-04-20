@@ -120,7 +120,7 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
                     "text-sm flex-1 transition-all",
                     task.completed ? "line-through opacity-40" : "text-ink"
                   )}>
-                    {task.text}
+                    {t(task.text)}
                   </span>
                   <button 
                      onClick={() => removeTask(task.id)}
@@ -235,7 +235,7 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, initial
           <tbody>
             {habits.map((habit: any) => (
               <tr key={habit.id} className="border-t border-line group">
-                <td className="py-4 text-sm font-medium text-ink">{habit.name}</td>
+                <td className="py-4 text-sm font-medium text-ink">{t(habit.name)}</td>
                 {last7Days.map(date => {
                   const dayKey = format(date, 'yyyy-MM-dd');
                   const isDone = habit.days[dayKey];
@@ -328,8 +328,8 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
           <tbody>
             {rows.map((row: any) => (
               <tr key={row.id} className="border-t border-line group">
-                <td className="py-4 text-sm font-medium text-ink">{row.col1}</td>
-                <td className="py-4 text-sm font-serif italic text-ink text-center">{row.col2}</td>
+                <td className="py-4 text-sm font-medium text-ink">{t(row.col1)}</td>
+                <td className="py-4 text-sm font-serif italic text-ink text-center">{t(row.col2)}</td>
                 <td className="py-4 text-right">
                   <button 
                     onClick={() => removeRow(row.id)}
@@ -744,267 +744,267 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }
 
 const PLANNER_CONFIGS: Record<string, any> = {
   'adhd-planner-2026': {
-    bundleName: 'Neurodivergent Pack',
+    bundleName: 'bundle_adhd',
     tabs: [
       {
         id: 'focus',
-        label: 'Focus',
+        label: 'tab_focus',
         component: TaskView,
         props: {
-          title: "Today's Focus",
-          subtitle: "Mindfulness & Momentum",
+          title: "title_focus",
+          subtitle: "sub_focus",
           storagePrefix: "tasks",
           initialTasks: [
-            { id: 't1', text: '5-minute Brain Dump', completed: false },
-            { id: 't2', text: 'Drink a glass of water', completed: false },
-            { id: 't3', text: 'Pick ONE main priority', completed: false }
+            { id: 't1', text: 'task_dump', completed: false },
+            { id: 't2', text: 'task_water', completed: false },
+            { id: 't3', text: 'task_priority', completed: false }
           ]
         }
       },
       {
         id: 'braindump',
-        label: 'Braindump',
+        label: 'tab_braindump',
         component: TextAreaView,
         props: {
-          title: "Brain Dump Area",
-          subtitle: "Clear the mind. Get it all out.",
+          title: "title_braindump",
+          subtitle: "sub_braindump",
           storagePrefix: "braindump",
-          placeholder: "Type everything that's bouncing around in your head..."
+          placeholder: "placeholder_bd"
         }
       },
       {
         id: 'habits',
-        label: 'Habits',
+        label: 'tab_habits',
         component: HabitsView,
         props: {
-          title: "Dopamine Trackers",
-          subtitle: "Small wins build momentum.",
+          title: "title_habits",
+          subtitle: "sub_habits",
           storagePrefix: "habits",
           initialHabits: [
-            { id: 'h1', name: 'Take Meds/Vitamins', days: {} },
-            { id: 'h2', name: '10 mins Sunlight', days: {} }
+            { id: 'h1', name: 'habit_meds', days: {} },
+            { id: 'h2', name: 'habit_sun', days: {} }
           ]
         }
       }
     ]
   },
   'it-girl-wellness': {
-    bundleName: 'Wellness Aesthetic',
+    bundleName: 'bundle_wellness',
     tabs: [
       {
         id: 'routine',
-        label: 'Routine',
+        label: 'tab_routine',
         component: TaskView,
         props: {
-          title: "Daily Routine",
-          subtitle: "Romanticize your life.",
+          title: "title_routine",
+          subtitle: "sub_routine",
           storagePrefix: "routine",
           initialTasks: [
-            { id: 'w1', text: 'Morning Skincare', completed: false },
-            { id: 'w2', text: '10 min Meditation', completed: false },
-            { id: 'w3', text: 'Evening Gua Sha', completed: false }
+            { id: 'w1', text: 'task_skin', completed: false },
+            { id: 'w2', text: 'task_meditate', completed: false },
+            { id: 'w3', text: 'task_guasha', completed: false }
           ]
         }
       },
       {
         id: 'journal',
-        label: 'Journal',
+        label: 'tab_journal',
         component: TextAreaView,
         props: {
-          title: "Reflection Journal",
-          subtitle: "What are you grateful for today?",
+          title: "title_journal",
+          subtitle: "sub_journal",
           storagePrefix: "journal",
-          placeholder: "Today I am grateful for..."
+          placeholder: "placeholder_journal"
         }
       },
       {
         id: 'habits',
-        label: 'Self-Care',
+        label: 'tab_selfcare',
         component: HabitsView,
         props: {
-          title: "Self-Care Tracker",
-          subtitle: "Nourish your body and mind.",
+          title: "title_selfcare",
+          subtitle: "sub_selfcare",
           storagePrefix: "selfcare",
           initialHabits: [
-            { id: 'h1', name: 'Drink 2L Water', days: {} },
-            { id: 'h2', name: 'Read 10 pages', days: {} },
-            { id: 'h3', name: '8h Sleep', days: {} }
+            { id: 'h1', name: 'habit_water_2l', days: {} },
+            { id: 'h2', name: 'habit_read_10', days: {} },
+            { id: 'h3', name: 'habit_sleep_8', days: {} }
           ]
         }
       }
     ]
   },
   'small-business-os': {
-    bundleName: 'Creator Business OS',
+    bundleName: 'bundle_creator',
     tabs: [
       {
         id: 'projects',
-        label: 'Projects',
+        label: 'tab_projects',
         component: TableDataView,
         props: {
-          title: "Active Projects",
-          subtitle: "What moves the needle forward?",
+          title: "title_projects",
+          subtitle: "sub_projects",
           storagePrefix: "projects",
-          columnHeaders: ["Project Name", "Status"],
+          columnHeaders: ["col_project", "col_status"],
           initialData: [
-            { id: 'p1', col1: 'Q3 Launch Campaign', col2: 'In Progress' },
-            { id: 'p2', col1: 'Client Onboarding Updates', col2: 'Pending' }
+            { id: 'p1', col1: 'proj_1', col2: 'stat_progress' },
+            { id: 'p2', col1: 'proj_2', col2: 'stat_pending' }
           ]
         }
       },
       {
         id: 'finances',
-        label: 'Finances',
+        label: 'tab_finances',
         component: TableDataView,
         props: {
-          title: "Income & Expenses",
-          subtitle: "Track your business cashflow.",
+          title: "title_finances",
+          subtitle: "sub_finances",
           storagePrefix: "finance",
-          columnHeaders: ["Description", "Amount ($)"],
+          columnHeaders: ["col_desc", "col_amount"],
           initialData: [
-            { id: 'f1', col1: 'Stripe Payout', col2: '+ 1,200.00' },
-            { id: 'f2', col1: 'Software Subscriptions', col2: '- 45.00' }
+            { id: 'f1', col1: 'fin_1', col2: 'fin_val_1' },
+            { id: 'f2', col1: 'fin_2', col2: 'fin_val_2' }
           ]
         }
       },
       {
         id: 'notes',
-        label: 'Ideas',
+        label: 'tab_ideas',
         component: TextAreaView,
         props: {
-          title: "Content & Ideas",
-          subtitle: "Capture brilliant concepts.",
+          title: "title_ideas",
+          subtitle: "sub_ideas",
           storagePrefix: "notes",
-          placeholder: "Brainstorming new products, content pillars..."
+          placeholder: "placeholder_ideas"
         }
       }
     ]
   },
   'undated-digital-planner': {
-    bundleName: 'Undated Classic',
+    bundleName: 'bundle_undated',
     tabs: [
       {
         id: 'monthly',
-        label: 'Monthly',
+        label: 'tab_monthly',
         component: MonthlyCalendarView,
         props: {
-          title: "Monthly Spread",
-          subtitle: "Bird's eye view of your commitments.",
+          title: "title_monthly_spread",
+          subtitle: "sub_monthly",
           storagePrefix: "monthly_view"
         }
       },
       {
         id: 'daily',
-        label: 'Daily',
+        label: 'tab_daily',
         component: DailyScheduleView,
         props: {
-          title: "Daily Agenda",
-          subtitle: "Master your time.",
+          title: "title_daily_agenda",
+          subtitle: "sub_daily",
           storagePrefix: "daily_agenda"
         }
       },
       {
         id: 'tasks',
-        label: 'Tasks',
+        label: 'tab_run_tasks',
         component: TaskView,
         props: {
-          title: "Running Task List",
-          subtitle: "Things that need to get done.",
+          title: "title_run_tasks",
+          subtitle: "sub_run_tasks",
           storagePrefix: "running_tasks",
           initialTasks: [
-            { id: 't1', text: 'Call doctor', completed: false },
-            { id: 't2', text: 'Pay bills', completed: true },
-            { id: 't3', text: 'Read 20 pages', completed: false }
+            { id: 't1', text: 'task_call_doc', completed: false },
+            { id: 't2', text: 'task_pay_bills', completed: true },
+            { id: 't3', text: 'task_read_20', completed: false }
           ]
         }
       }
     ]
   },
   'meal-prep-weekly': {
-    bundleName: 'Nutrition Pack',
+    bundleName: 'bundle_nutrition',
     tabs: [
       {
         id: 'meal-plan',
-        label: 'Weekly',
+        label: 'tab_weekly',
         component: WeeklyMealView,
         props: {
-          title: "Weekly Menu",
-          subtitle: "Nourish your body intentionally.",
+          title: "title_weekly_menu",
+          subtitle: "sub_weekly_menu",
           storagePrefix: "mealplan_weekly"
         }
       },
       {
         id: 'groceries',
-        label: 'Groceries',
+        label: 'tab_groceries',
         component: TaskView,
         props: {
-          title: "Shopping List",
-          subtitle: "Everything you need for the week.",
+          title: "title_groceries",
+          subtitle: "sub_groceries",
           storagePrefix: "groceries",
           initialTasks: [
-            { id: 'g1', text: 'Oat milk', completed: false },
-            { id: 'g2', text: 'Sweet potatoes', completed: false },
-            { id: 'g3', text: 'Organic free-range eggs', completed: false }
+            { id: 'g1', text: 'groc_1', completed: false },
+            { id: 'g2', text: 'groc_2', completed: false },
+            { id: 'g3', text: 'groc_3', completed: false }
           ]
         }
       },
       {
         id: 'recipes',
-        label: 'Recipes',
+        label: 'tab_recipes',
         component: TableDataView,
         props: {
-          title: "Recipe Vault",
-          subtitle: "Your favorite go-to meals and calories.",
+          title: "title_recipes",
+          subtitle: "sub_recipes",
           storagePrefix: "recipes",
-          columnHeaders: ["Recipe Name", "Prep / Notes"],
+          columnHeaders: ["col_recipe", "col_prep"],
           initialData: [
-            { id: 'r1', col1: 'Avocado Toast with Egg', col2: '350 kcal | 10 mins' },
-            { id: 'r2', col1: 'Quinoa & Salmon Bowl', col2: '500 kcal | 25 mins' }
+            { id: 'r1', col1: 'rec_1', col2: 'rec_val_1' },
+            { id: 'r2', col1: 'rec_2', col2: 'rec_val_2' }
           ]
         }
       }
     ]
   },
   'weight-loss-tracker': {
-    bundleName: 'Body & Fitness Pack',
+    bundleName: 'bundle_fitness',
     tabs: [
       {
         id: 'progress',
-        label: 'Progress',
+        label: 'tab_progress',
         component: WeightTrackerView,
         props: {
-          title: "Weight Journey",
-          subtitle: "Track your progress visually.",
+          title: "title_progress",
+          subtitle: "sub_progress",
           storagePrefix: "weight_progress"
         }
       },
       {
         id: 'measurements',
-        label: 'Measures',
+        label: 'tab_measures',
         component: TableDataView,
         props: {
-          title: "Body Measurements",
-          subtitle: "Track inches lost over time.",
+          title: "title_measures",
+          subtitle: "sub_measures",
           storagePrefix: "measurements_tracker",
-          columnHeaders: ["Body Part & Date", "Size"],
+          columnHeaders: ["col_body_part", "col_size"],
           initialData: [
-            { id: 'm1', col1: 'Waist - April 1st', col2: '85 cm' },
-            { id: 'm2', col1: 'Hips - April 1st', col2: '102 cm' }
+            { id: 'm1', col1: 'meas_1', col2: 'meas_val_1' },
+            { id: 'm2', col1: 'meas_2', col2: 'meas_val_2' }
           ]
         }
       },
       {
         id: 'milestones',
-        label: 'Milestones',
+        label: 'tab_milestones',
         component: TaskView,
         props: {
-          title: "Rewards & Goals",
-          subtitle: "Celebrate your victories.",
+          title: "title_milestones",
+          subtitle: "sub_milestones",
           storagePrefix: "milestones",
           initialTasks: [
-            { id: 'ms1', text: 'Reach 75kg: Buy new running shoes', completed: false },
-            { id: 'ms2', text: 'Fit into old jeans', completed: false },
-            { id: 'ms3', text: '1 month of consistent workouts', completed: false }
+            { id: 'ms1', text: 'ms_1', completed: false },
+            { id: 'ms2', text: 'ms_2', completed: false },
+            { id: 'ms3', text: 'ms_3', completed: false }
           ]
         }
       }

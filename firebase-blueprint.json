@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile and Access",
+      "description": "Stores user data including purchases and subscription status",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "purchasedPlanners": { "type": "array", "items": { "type": "string" } },
+        "subscriptionStatus": { "type": "string" }
+      },
+      "required": ["email", "name", "createdAt"]
+    },
+    "PlannerData": {
+      "title": "Generic Planner State",
+      "description": "Stores the JSON state for any particular tab/planner",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "payload": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "payload", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile document containing access levels"
+    },
+    "users/{userId}/planner_data/{docId}": {
+      "schema": "PlannerData",
+      "description": "The saved states of individual planner views (like adhd-planner-2026_tasks)"
+    }
+  }
+}

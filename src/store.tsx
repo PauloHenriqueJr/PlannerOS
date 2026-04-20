@@ -1,4 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { 
+  signInWithPopup, 
+  onAuthStateChanged,
+  signOut,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db, googleProvider } from './firebase';
 
 export interface PlannerProduct {
   id: string;
@@ -9,67 +17,69 @@ export interface PlannerProduct {
   tag: string;
 }
 
-export const PRODUCTS: PlannerProduct[] = [
+export const PRODUCTS = [
   {
     id: 'adhd-planner-2026',
-    name: 'ADHD Dopamine Planner',
-    description: 'Designed for focus & quick wins. Includes Brain Dump & micro-habit trackers.',
+    nameKey: 'prod_adhd_name',
+    descKey: 'prod_adhd_desc',
     price: 29.90,
     image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
-    tag: 'Bestseller'
+    tagKey: 'prod_adhd_tag'
   },
   {
     id: 'it-girl-wellness',
-    name: 'Wellness "IT GIRL" Aesthetic',
-    description: 'Minimalist & beige aesthetic. Skincare, mood tracking, and routines.',
+    nameKey: 'prod_itgirl_name',
+    descKey: 'prod_itgirl_desc',
     price: 34.90,
     image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
-    tag: 'Trending'
+    tagKey: 'prod_itgirl_tag'
   },
   {
     id: 'undated-digital-planner',
-    name: 'Undated Digital Agenda',
-    description: 'The classic iPad planner experience. Monthly calendars, hourly schedules, and daily priorities. Use it year after year.',
+    nameKey: 'prod_undated_name',
+    descKey: 'prod_undated_desc',
     price: 24.90,
     image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
-    tag: 'Classic'
+    tagKey: 'prod_undated_tag'
   },
   {
     id: 'small-business-os',
-    name: 'Small Biz Complete OS',
-    description: 'Manage sales, CRM, and inventory in a clean dashboard.',
+    nameKey: 'prod_smallbiz_name',
+    descKey: 'prod_smallbiz_desc',
     price: 49.90,
     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-    tag: 'Pro'
+    tagKey: 'prod_smallbiz_tag'
   },
   {
     id: 'meal-prep-weekly',
-    name: 'Weekly Meal Prep Hub',
-    description: 'Plan your meals visually. Generate shopping lists and save recipes effortlessly.',
+    nameKey: 'prod_meal_name',
+    descKey: 'prod_meal_desc',
     price: 19.90,
     image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
-    tag: 'New'
+    tagKey: 'prod_meal_tag'
   },
   {
     id: 'weight-loss-tracker',
-    name: 'Body & Fitness Tracker',
-    description: 'Track your wellness journey. Monitor weight, body measurements, and celebrate milestones.',
+    nameKey: 'prod_weight_name',
+    descKey: 'prod_weight_desc',
     price: 14.90,
     image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
-    tag: 'Fitness'
+    tagKey: 'prod_weight_tag'
   }
 ];
 
-interface User {
+interface UserProfile {
   id: string;
   name: string;
   email: string;
+  subscriptionStatus?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string) => void;
+  user: UserProfile | null;
+  login: () => Promise<void>;
   logout: () => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -82,55 +92,83 @@ interface PurchasesContextType {
 const PurchasesContext = createContext<PurchasesContextType>({} as PurchasesContextType);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('planner_user');
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      setUser(parsedUser);
-      
-      const savedPurchases = localStorage.getItem(`purchases_${parsedUser.id}`);
-      if (savedPurchases) {
-        setPurchasedIds(JSON.parse(savedPurchases));
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // Fetch or create user profile
+        const userRef = doc(db, 'users', firebaseUser.uid);
+        const userDoc = await getDoc(userRef);
+        
+        let profileData: UserProfile;
+        
+        if (userDoc.exists()) {
+          const data = userDoc.data();
+          profileData = {
+            id: firebaseUser.uid,
+            name: data.name || firebaseUser.displayName || 'User',
+            email: firebaseUser.email || '',
+            subscriptionStatus: data.subscriptionStatus
+          };
+          setPurchasedIds(data.purchasedPlanners || []);
+        } else {
+          // New User Registration
+          profileData = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || ''
+          };
+          await setDoc(userRef, {
+            name: profileData.name,
+            email: profileData.email,
+            createdAt: serverTimestamp(),
+            purchasedPlanners: []
+          });
+          setPurchasedIds([]);
+        }
+        
+        setUser(profileData);
+      } else {
+        setUser(null);
+        setPurchasedIds([]);
       }
-    }
-    setIsLoaded(true);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = (email: string) => {
-    const newUser = { id: 'u1', name: email.split('@')[0], email };
-    setUser(newUser);
-    localStorage.setItem('planner_user', JSON.stringify(newUser));
-    
-    // Load purchases for this user
-    const savedPurchases = localStorage.getItem(`purchases_${newUser.id}`);
-    if (savedPurchases) {
-      setPurchasedIds(JSON.parse(savedPurchases));
-    } else {
-      setPurchasedIds([]); // Reset for new user
+  const login = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error('Login Failed', error);
     }
   };
 
   const logout = () => {
-    setUser(null);
-    setPurchasedIds([]);
-    localStorage.removeItem('planner_user');
+    signOut(auth);
   };
 
-  const buyPlanner = (plannerId: string) => {
+  // Temporarily simulate a webhook purchase
+  const buyPlanner = async (plannerId: string) => {
     if (!user) return;
     const updated = [...purchasedIds, plannerId];
     setPurchasedIds(updated);
-    localStorage.setItem(`purchases_${user.id}`, JSON.stringify(updated));
+    
+    // In production, this is done securely by the Stripe/Kiwify Webhook!
+    await setDoc(doc(db, 'users', user.id), { purchasedPlanners: updated }, { merge: true });
   };
 
-  if (!isLoaded) return null; // Avoid hydration mismatch
+  if (isLoading) {
+    return <div className="h-screen w-full flex items-center justify-center bg-paper font-serif italic text-2xl text-ink/40">Loading workspace...</div>;
+  }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
         <PurchasesContext.Provider value={{ purchasedIds, buyPlanner }}>
             {children}
         </PurchasesContext.Provider>

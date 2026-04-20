@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ==== GLOBAL SAFETY NET ====
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ==== HELPER FUNCTIONS ====
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
+    // ==== ENTITY VALIDATION HELPERS ====
+    function isValidUser(data) {
+      return data.keys().hasAll(['email', 'name', 'createdAt'])
+        && data.email is string && data.email.size() <= 200
+        && data.name is string && data.name.size() <= 200
+        && data.createdAt == request.time
+        && (!('purchasedPlanners' in data) || (data.purchasedPlanners is list && data.purchasedPlanners.size() <= 100))
+        && (!('subscriptionStatus' in data) || (data.subscriptionStatus is string && data.subscriptionStatus.size() <= 50));
+    }
+    
+    function isValidPlannerData(data) {
+      return data.keys().hasAll(['ownerId', 'payload', 'updatedAt'])
+        && data.ownerId == request.auth.uid
+        && data.payload is string && data.payload.size() <= 500000 // 500KB max per json payload
+        && data.updatedAt == request.time;
+    }
+
+    // ==== ROUTES ====
+
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidId(userId)
+        && isValidUser(incoming());
+        
+      allow update: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidId(userId);
+    }
+
+    match /users/{userId}/planner_data/{docId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      
+      // Allow users to sync their own planners
+      allow create: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidId(userId)
+        && isValidPlannerData(incoming());
+        
+      allow update: if isSignedIn() 
+        && request.auth.uid == userId
+        && isValidId(userId)
+        && existing().ownerId == request.auth.uid;
+        
+      allow delete: if isSignedIn() && request.auth.uid == userId && existing().ownerId == request.auth.uid;
+    }
+  }
+}

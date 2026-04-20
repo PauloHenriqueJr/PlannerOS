@@ -6,9 +6,14 @@ const resources = {
   en: {
     translation: {
       "greeting": "Welcome back",
-      "library": "My Library",
-      "marketplace": "Template Store",
+      "library": "My Planners",
+      "marketplace": "Store",
       "dashboard": "Dashboard",
+      "unlock_pro_title": "Upgrade to Pro",
+      "unlock_pro_desc": "Unlock all planners & updates",
+      "unlock_pro_btn": "Go Pro",
+      "dark_mode": "Toggle Dark Mode",
+      "print_planner": "Print Planner",
       "logout": "Sign out",
       "login": "Sign in",
       "browse_store": "Browse Templates",
@@ -230,9 +235,14 @@ const resources = {
   pt: {
     translation: {
       "greeting": "Bem-vindo de volta",
-      "library": "Biblioteca",
-      "marketplace": "Template Store",
+      "library": "Meus Planners",
+      "marketplace": "Loja",
       "dashboard": "Meu Painel",
+      "unlock_pro_title": "Desbloquear Pro",
+      "unlock_pro_desc": "Acesso vitalício a todos os planners",
+      "unlock_pro_btn": "Assinar Pro",
+      "dark_mode": "Modo Noturno",
+      "print_planner": "Imprimir Planner",
       "logout": "Sair",
       "login": "Entrar",
       "browse_store": "Ver Loja",

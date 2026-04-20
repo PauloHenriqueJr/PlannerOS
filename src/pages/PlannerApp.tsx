@@ -15,6 +15,7 @@ import {
 } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
+import { Moon, Sun, Printer } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -56,9 +57,14 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
           <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
           <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • {t(subtitle)}</p>
         </div>
-        <div className="flex space-x-2">
-          <button className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-xs md:text-sm font-serif italic hover:bg-sidebar transition-colors">W</button>
-          <button className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-xs md:text-sm hover:bg-sidebar transition-colors opacity-50">...</button>
+        <div className="flex space-x-2 print:hidden">
+          <button onClick={() => document.documentElement.classList.toggle('dark')} title={t('dark_mode')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
+             <Moon size={16} className="hidden dark:block" />
+             <Sun size={16} className="block dark:hidden" />
+          </button>
+          <button onClick={() => window.print()} title={t('print_planner')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
+            <Printer size={16} />
+          </button>
         </div>
       </div>
 
@@ -154,6 +160,15 @@ function TextAreaView({ plannerId, userId, title, subtitle, storagePrefix, place
         <div>
           <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
           <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
+        </div>
+        <div className="flex space-x-2 print:hidden">
+          <button onClick={() => document.documentElement.classList.toggle('dark')} title={t('dark_mode')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
+             <Moon size={16} className="hidden dark:block" />
+             <Sun size={16} className="block dark:hidden" />
+          </button>
+          <button onClick={() => window.print()} title={t('print_planner')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
+            <Printer size={16} />
+          </button>
         </div>
       </div>
       
@@ -1051,27 +1066,33 @@ export default function PlannerApp() {
       {/* Sidebar Navigator */}
       <aside className="hidden md:flex w-64 border-r border-line bg-sidebar p-6 flex-col shrink-0 overflow-y-auto">
         <div className="mb-8">
-          <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-accent mb-4">{t('overview_title')}</h3>
           <ul className="space-y-3">
-            <li className="flex items-center p-2 bg-white rounded-lg border border-line text-sm font-semibold">
-              <span className="w-2 h-2 rounded-full bg-accent mr-3 shrink-0"></span>
-              <span className="truncate">{t(product.nameKey)}</span>
-            </li>
-            <li className="flex items-center p-2 text-sm opacity-60 hover:opacity-100 transition-all cursor-pointer">
+            <li className="flex items-center p-2 text-sm opacity-60 hover:opacity-100 transition-all cursor-pointer group">
                <Link to="/dashboard" className="flex items-center w-full">
-                 <span className="w-2 h-2 rounded-full border border-line mr-3 shrink-0"></span>
+                 <span className="w-6 h-6 rounded border border-line flex items-center justify-center mr-3 shrink-0 group-hover:bg-white transition-colors">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                 </span>
                  {t('back_library')}
                </Link>
+            </li>
+            <li className="flex items-center p-2 bg-white rounded-lg border border-line text-sm font-bold shadow-sm mt-4">
+              <span className="w-2 h-2 rounded-full bg-accent mr-3 shrink-0 animate-pulse"></span>
+              <span className="truncate">{t(product.nameKey)}</span>
             </li>
           </ul>
         </div>
 
-        <div className="mt-auto pt-10 lg:pt-48">
-          <div className="p-4 bg-accent text-white rounded-xl">
-            <p className="text-xs font-serif italic mb-2">{t('exclusive_access')}</p>
-            <h4 className="text-sm font-bold leading-tight mb-3">{t(config.bundleName)}</h4>
-            <Link to="/" className="w-full py-2 bg-white text-accent rounded text-[10px] font-bold uppercase tracking-wider block text-center transition-opacity hover:opacity-90">{t('store_link')}</Link>
-          </div>
+        <div className="mt-auto">
+          {!purchasedIds.includes('pro') && (
+            <div className="p-5 bg-ink text-white rounded-xl shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-[30px] -mr-10 -mt-10 group-hover:bg-accent/40 transition-colors duration-700"></div>
+              <p className="text-[10px] uppercase font-bold tracking-widest mb-2 opacity-60">{t('unlock_pro_title')}</p>
+              <h4 className="text-sm font-bold leading-snug mb-4">{t('unlock_pro_desc')}</h4>
+              <Link to="/checkout/pro" className="w-full py-2.5 bg-white/10 hover:bg-accent border border-white/20 text-white rounded text-[10px] font-bold uppercase tracking-widest block text-center transition-all backdrop-blur-md">
+                 {t('unlock_pro_btn')}
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
 

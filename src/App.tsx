@@ -25,8 +25,8 @@ function Header() {
       <div className="flex items-center space-x-4 sm:space-x-12">
         <Link to="/" className="text-xl sm:text-2xl font-serif font-bold tracking-tighter text-ink hover:opacity-80 transition-opacity">PLANN.OS</Link>
         <div className="flex space-x-6 text-sm font-medium opacity-70 hidden sm:flex">
-          <Link to="/" className="hover:opacity-100 transition-opacity">{t('library')}</Link>
-          <a href="#" className="hover:opacity-100 transition-opacity pointer-events-none">{t('marketplace')}</a>
+          <Link to="/dashboard" className="hover:opacity-100 transition-opacity">{t('library')}</Link>
+          <Link to="/#planners" className="hover:opacity-100 transition-opacity">{t('marketplace')}</Link>
         </div>
       </div>
       <div className="flex items-center space-x-2 sm:space-x-4">

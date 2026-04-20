@@ -27,12 +27,36 @@ export const PRODUCTS: PlannerProduct[] = [
     tag: 'Trending'
   },
   {
+    id: 'undated-digital-planner',
+    name: 'Undated Digital Agenda',
+    description: 'The classic iPad planner experience. Monthly calendars, hourly schedules, and daily priorities. Use it year after year.',
+    price: 24.90,
+    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
+    tag: 'Classic'
+  },
+  {
     id: 'small-business-os',
     name: 'Small Biz Complete OS',
     description: 'Manage sales, CRM, and inventory in a clean dashboard.',
     price: 49.90,
     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
     tag: 'Pro'
+  },
+  {
+    id: 'meal-prep-weekly',
+    name: 'Weekly Meal Prep Hub',
+    description: 'Plan your meals visually. Generate shopping lists and save recipes effortlessly.',
+    price: 19.90,
+    image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
+    tag: 'New'
+  },
+  {
+    id: 'weight-loss-tracker',
+    name: 'Body & Fitness Tracker',
+    description: 'Track your wellness journey. Monitor weight, body measurements, and celebrate milestones.',
+    price: 14.90,
+    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
+    tag: 'Fitness'
   }
 ];
 

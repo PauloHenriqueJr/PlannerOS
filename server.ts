@@ -168,8 +168,10 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
-  // Try to seed products if empty
-  await autoSeedProducts();
+  // Seed opportunistically, but never block the app from listening.
+  autoSeedProducts().catch((error: any) => {
+    console.error("[AutoSeed Error]:", error?.message || error);
+  });
 
   // Webhook for Stripe (Must use raw body, before express.json middleware)
   app.post(

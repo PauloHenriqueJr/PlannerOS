@@ -1403,12 +1403,12 @@ export default function PlannerApp() {
 
       {/* Main Planner Canvas */}
       <main className={cn(
-        "flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-4 md:p-8 transition-colors duration-500",
+        "flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-2 md:p-4 transition-colors duration-500",
         isFullscreen ? "p-0 h-screen w-screen" : "h-[calc(100vh-3.5rem)] md:h-full"
       )}>
         <div className={cn(
           "w-full h-full flex flex-row relative",
-          isFullscreen ? "max-w-none" : "max-w-6xl"
+          isFullscreen ? "max-w-none" : "max-w-[1600px]"
         )}>
           
           {/* Main Paper / Content */}

@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import "dotenv/config";
 
@@ -17,10 +18,158 @@ try {
   console.log("Firebase admin initialization skipped or failed:", e);
 }
 
-const PORT = 3000;
+const PRODUCTS_TO_SEED = [
+  {
+    id: 'adhd-planner-2026',
+    nameKey: 'prod_adhd_name',
+    descKey: 'prod_adhd_desc',
+    priceUsd: 14.90,
+    priceBrl: 47.90,
+    image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_adhd_tag',
+    active: true,
+    order: 1
+  },
+  {
+    id: 'it-girl-wellness',
+    nameKey: 'prod_itgirl_name',
+    descKey: 'prod_itgirl_desc',
+    priceUsd: 12.90,
+    priceBrl: 37.90,
+    image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_itgirl_tag',
+    active: true,
+    order: 2
+  },
+  {
+    id: 'undated-digital-planner',
+    nameKey: 'prod_undated_name',
+    descKey: 'prod_undated_desc',
+    priceUsd: 14.90,
+    priceBrl: 47.90,
+    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_undated_tag',
+    active: true,
+    order: 3
+  },
+  {
+    id: 'small-business-os',
+    nameKey: 'prod_smallbiz_name',
+    descKey: 'prod_smallbiz_desc',
+    priceUsd: 19.90,
+    priceBrl: 67.90,
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_smallbiz_tag',
+    active: true,
+    order: 4
+  },
+  {
+    id: 'meal-prep-weekly',
+    nameKey: 'prod_meal_name',
+    descKey: 'prod_meal_desc',
+    priceUsd: 9.90,
+    priceBrl: 27.90,
+    image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_meal_tag',
+    active: true,
+    order: 5
+  },
+  {
+    id: 'weight-loss-tracker',
+    nameKey: 'prod_weight_name',
+    descKey: 'prod_weight_desc',
+    priceUsd: 9.90,
+    priceBrl: 27.90,
+    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_weight_tag',
+    active: true,
+    order: 6
+  }
+];
+
+const PRO_PRODUCT = {
+  id: 'pro',
+  nameKey: 'price_sub_t',
+  descKey: 'price_features_sub',
+  priceUsd: 9.90,
+  priceBrl: 29.90,
+  image: '',
+  tagKey: '',
+  active: true,
+  order: 0
+};
+
+const PRODUCT_TITLES: Record<string, { en: string; pt: string }> = {
+  'adhd-planner-2026': { en: 'ADHD Dopamine Planner', pt: 'Planner Dopamina TDAH' },
+  'it-girl-wellness': { en: 'Minimalist IT GIRL Journal', pt: 'Diario IT GIRL Minimalista' },
+  'undated-digital-planner': { en: 'Undated Digital Agenda', pt: 'Agenda Digital Classica' },
+  'small-business-os': { en: 'Small Biz Creator OS', pt: 'Sistema Empreendedor' },
+  'meal-prep-weekly': { en: 'Weekly Meal Prep Matrix', pt: 'Matriz Semanal de Refeicoes' },
+  'weight-loss-tracker': { en: 'Body & Fitness Tracker', pt: 'Guia Corpo & Fitness' },
+  pro: { en: 'Plann.OS Pro', pt: 'Plann.OS Pro' }
+};
+
+const CHECKOUT_PRODUCTS = [...PRODUCTS_TO_SEED, PRO_PRODUCT];
+
+function getCheckoutProduct(productId: string) {
+  return CHECKOUT_PRODUCTS.find((product) => product.id === productId && product.active !== false);
+}
+
+function getBearerToken(req: express.Request) {
+  const header = req.headers.authorization || '';
+  const [scheme, token] = header.split(' ');
+  return scheme?.toLowerCase() === 'bearer' ? token : '';
+}
+
+async function resolveProductId(externalId: string): Promise<string> {
+  const db = getFirestore();
+  try {
+    const mappingRef = db.collection("product_mappings").doc(String(externalId));
+    const mappingDoc = await mappingRef.get();
+    
+    if (mappingDoc.exists) {
+      const internalId = mappingDoc.data()?.plannerId;
+      console.log(`[Mapping] Resolved ${externalId} to ${internalId}`);
+      return internalId || externalId;
+    }
+  } catch (e) {
+    console.error("[Mapping Error]", e);
+  }
+  return externalId;
+}
+
+async function autoSeedProducts() {
+  const db = getFirestore();
+  const productsRef = db.collection("products");
+  
+  try {
+    const snapshot = await productsRef.limit(1).get();
+    if (snapshot.empty) {
+      console.log("[AutoSeed] Products collection is empty. Seeding initial products...");
+      const batch = db.batch();
+      
+      for (const p of PRODUCTS_TO_SEED) {
+        batch.set(productsRef.doc(p.id), {
+          ...p,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      }
+      
+      await batch.commit();
+      console.log("[AutoSeed] Successfully seeded initial products.");
+    }
+  } catch (error: any) {
+    console.error("[AutoSeed Error]:", error.message);
+  }
+}
 
 async function startServer() {
   const app = express();
+  const PORT = Number(process.env.PORT || 3000);
+
+  // Try to seed products if empty
+  await autoSeedProducts();
 
   // Webhook for Stripe (Must use raw body, before express.json middleware)
   app.post(
@@ -80,45 +229,232 @@ async function startServer() {
   // Parse JSON for other routes
   app.use(express.json());
 
-  // Webhook for Hotmart (usually JSON payload, verify Hotmart token)
-  app.post("/api/webhooks/hotmart", (req, res) => {
-    const hotmartToken = req.headers['x-hotmart-hottok'];
-    if (hotmartToken !== process.env.HOTMART_HOTTTOk) {
-      console.warn("Invalid Hotmart Token");
-      // return res.status(401).send("Unauthorized"); // Commented for testing
-    }
-
-    const { event, data } = req.body;
+async function resolveProductId(externalId: string): Promise<string> {
+  const db = getFirestore();
+  try {
+    const mappingRef = db.collection("product_mappings").doc(String(externalId));
+    const mappingDoc = await mappingRef.get();
     
-    if (event === "PURCHASE_APPROVED") {
-      const buyerEmail = data.buyer.email;
-      const product = data.product.id;
-      // Grant access to user in your DB
-      console.log(`Hotmart Sale! Granted access to ${buyerEmail} for product ${product}`);
+    if (mappingDoc.exists) {
+      const internalId = mappingDoc.data()?.plannerId;
+      console.log(`[Mapping] Resolved ${externalId} to ${internalId}`);
+      return internalId || externalId;
+    }
+  } catch (e) {
+    console.error("[Mapping Error]", e);
+  }
+  return externalId;
+}
+
+// Webhook for Hotmart (usually JSON payload, verify Hotmart token)
+app.post("/api/webhooks/hotmart", async (req, res) => {
+  const hotmartToken = req.headers['x-hotmart-hottok'];
+  
+  if (process.env.HOTMART_HOTTTOk && hotmartToken !== process.env.HOTMART_HOTTTOk) {
+    console.warn("Unauthorized: Invalid Hotmart Token received");
+    return res.status(401).send("Unauthorized: Invalid Hottok");
+  }
+
+  const { event, data } = req.body;
+  
+  if (!data?.buyer?.email || !data?.product?.id) {
+    return res.status(400).send("Bad Request: Missing data");
+  }
+
+  const buyerEmail = data.buyer.email.toLowerCase();
+  const externalProductId = String(data.product.id);
+  const db = getFirestore();
+
+  try {
+    // RESOLVE: Map Hotmart numeric ID to our string ID (e.g. adhd-planner)
+    const productId = await resolveProductId(externalProductId);
+
+    const usersRef = db.collection("users");
+    const snapshot = await usersRef.where("email", "==", buyerEmail).get();
+
+    if (snapshot.empty) {
+      console.warn(`No user found for email ${buyerEmail}. Sale might need manual sync.`);
+      return res.status(200).json({ status: "user_not_found" }); 
     }
 
-    res.json({ status: "ok" });
-  });
+    const userDoc = snapshot.docs[0];
+
+    if (event === "PURCHASE_APPROVED") {
+      await userDoc.ref.update({
+        purchasedPlanners: FieldValue.arrayUnion(productId)
+      });
+      console.log(`[Hotmart] Success: Granted access to ${productId} (from ${externalProductId}) for ${buyerEmail}`);
+    } 
+    else if (["PURCHASE_CANCELED", "PURCHASE_REFUNDED", "SUBSCRIPTION_CANCELLATION", "PURCHASE_CHARGEBACK"].includes(event)) {
+      await userDoc.ref.update({
+        purchasedPlanners: FieldValue.arrayRemove(productId)
+      });
+      console.log(`[Hotmart] Revoked: Removed access to ${productId} for ${buyerEmail} due to ${event}`);
+    }
+
+    return res.status(200).json({ status: "success" });
+  } catch (error: any) {
+    console.error("[Hotmart Webhook Error]:", error.message);
+    return res.status(500).send("Internal Server Error");
+  }
+});
+
+const PRODUCTS_TO_SEED = [
+  {
+    id: 'adhd-planner-2026',
+    nameKey: 'prod_adhd_name',
+    descKey: 'prod_adhd_desc',
+    priceUsd: 14.90,
+    priceBrl: 47.90,
+    image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_adhd_tag',
+    active: true,
+    order: 1
+  },
+  {
+    id: 'it-girl-wellness',
+    nameKey: 'prod_itgirl_name',
+    descKey: 'prod_itgirl_desc',
+    priceUsd: 12.90,
+    priceBrl: 37.90,
+    image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_itgirl_tag',
+    active: true,
+    order: 2
+  },
+  {
+    id: 'undated-digital-planner',
+    nameKey: 'prod_undated_name',
+    descKey: 'prod_undated_desc',
+    priceUsd: 14.90,
+    priceBrl: 47.90,
+    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_undated_tag',
+    active: true,
+    order: 3
+  },
+  {
+    id: 'small-business-os',
+    nameKey: 'prod_smallbiz_name',
+    descKey: 'prod_smallbiz_desc',
+    priceUsd: 19.90,
+    priceBrl: 67.90,
+    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_smallbiz_tag',
+    active: true,
+    order: 4
+  },
+  {
+    id: 'meal-prep-weekly',
+    nameKey: 'prod_meal_name',
+    descKey: 'prod_meal_desc',
+    priceUsd: 9.90,
+    priceBrl: 27.90,
+    image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_meal_tag',
+    active: true,
+    order: 5
+  },
+  {
+    id: 'weight-loss-tracker',
+    nameKey: 'prod_weight_name',
+    descKey: 'prod_weight_desc',
+    priceUsd: 9.90,
+    priceBrl: 27.90,
+    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
+    tagKey: 'prod_weight_tag',
+    active: true,
+    order: 6
+  }
+];
+
+async function autoSeedProducts() {
+  const db = getFirestore();
+  const productsRef = db.collection("products");
+  
+  try {
+    const snapshot = await productsRef.limit(1).get();
+    if (snapshot.empty) {
+      console.log("[AutoSeed] Products collection is empty. Seeding initial products...");
+      const batch = db.batch();
+      
+      for (const p of PRODUCTS_TO_SEED) {
+        batch.set(productsRef.doc(p.id), {
+          ...p,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      }
+      
+      await batch.commit();
+      console.log("[AutoSeed] Successfully seeded initial products.");
+    }
+  } catch (error: any) {
+    console.error("[AutoSeed Error]:", error.message);
+  }
+}
+
+// Admin endpoint to seed current products to Firestore
+app.post("/api/admin/seed-products", async (req, res) => {
+  const { adminToken } = req.body;
+  if (adminToken !== process.env.HOTMART_HOTTTOk) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  const db = getFirestore();
+  try {
+    const batch = db.batch();
+    for (const p of PRODUCTS_TO_SEED) {
+      const ref = db.collection("products").doc(p.id);
+      batch.set(ref, {
+        ...p,
+        updatedAt: FieldValue.serverTimestamp()
+      });
+    }
+    await batch.commit();
+    res.json({ success: true, count: PRODUCTS_TO_SEED.length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
 
   // Stripe Checkout Session Creation
   app.post("/api/checkout/stripe", async (req, res) => {
-    const { productId, priceUsd, priceBrl, title, isPt, email, userId } = req.body;
+    const { productId, isPt } = req.body;
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return res.status(500).json({ error: "Stripe key not configured. Check .env" });
     }
 
     try {
+      if (typeof productId !== 'string') {
+        return res.status(400).json({ error: "Invalid product." });
+      }
+
+      const token = getBearerToken(req);
+      if (!token) {
+        return res.status(401).json({ error: "Authentication required." });
+      }
+
+      const decodedToken = await getAuth().verifyIdToken(token);
+      const checkoutProduct = getCheckoutProduct(productId);
+      if (!checkoutProduct) {
+        return res.status(404).json({ error: "Product not found." });
+      }
+
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
         apiVersion: "2025-01-27.acacia" as any
       });
 
-      // Price mapping based on language (simulating BRL PIX availability vs Global USD)
-      const currency = isPt ? "brl" : "usd";
-      const unitAmount = isPt ? priceBrl * 100 : priceUsd * 100;
+      const usePortuguesePricing = isPt === true;
+      const currency = usePortuguesePricing ? "brl" : "usd";
+      const unitAmount = usePortuguesePricing
+        ? checkoutProduct.priceBrl * 100
+        : checkoutProduct.priceUsd * 100;
+      const title = PRODUCT_TITLES[checkoutProduct.id]?.[usePortuguesePricing ? 'pt' : 'en'] || checkoutProduct.id;
 
       // Allow PIX if currency is BRL, otherwise limit to Card/Apple Pay etc.
-      const paymentMethodTypes: any[] = isPt 
+      const paymentMethodTypes: any[] = usePortuguesePricing
         ? ["card", "pix"] 
         : ["card"];
 
@@ -137,14 +473,15 @@ async function startServer() {
           },
         ],
         mode: "payment",
-        customer_email: email || undefined,
-        client_reference_id: userId || undefined,
+        customer_email: decodedToken.email || undefined,
+        client_reference_id: decodedToken.uid,
         metadata: {
-          productId,
+          productId: checkoutProduct.id,
+          uid: decodedToken.uid,
         },
         // We use the referrer URL to redirect back
-        success_url: `${req.headers.origin}/dashboard?success=true&product=${productId}`,
-        cancel_url: `${req.headers.origin}/checkout/${productId}?canceled=true`,
+        success_url: `${req.headers.origin}/dashboard?success=true&product=${checkoutProduct.id}`,
+        cancel_url: `${req.headers.origin}/checkout/${checkoutProduct.id}?canceled=true`,
       });
 
       res.json({ url: session.url });

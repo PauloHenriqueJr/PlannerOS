@@ -21,8 +21,14 @@ service cloud.firestore {
         && data.email is string && data.email.size() <= 200
         && data.name is string && data.name.size() <= 200
         && data.createdAt == request.time
-        && (!('purchasedPlanners' in data) || (data.purchasedPlanners is list && data.purchasedPlanners.size() <= 100))
-        && (!('subscriptionStatus' in data) || (data.subscriptionStatus is string && data.subscriptionStatus.size() <= 50));
+        && (!('purchasedPlanners' in data) || (data.purchasedPlanners is list && data.purchasedPlanners.size() == 0))
+        && !('subscriptionStatus' in data);
+    }
+
+    function isSafeUserUpdate() {
+      return incoming().diff(existing()).affectedKeys().hasOnly(['name'])
+        && incoming().name is string
+        && incoming().name.size() <= 200;
     }
     
     function isValidPlannerData(data) {
@@ -44,7 +50,13 @@ service cloud.firestore {
         
       allow update: if isSignedIn() 
         && request.auth.uid == userId 
-        && isValidId(userId);
+        && isValidId(userId)
+        && isSafeUserUpdate();
+    }
+
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     match /users/{userId}/planner_data/{docId} {

@@ -5,7 +5,7 @@ import {
   signOut,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, getDocs } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
 
 interface ThemeContextType {
@@ -23,9 +23,11 @@ export interface PlannerProduct {
   priceBrl: number;
   image: string;
   tagKey: string;
+  active?: boolean;
+  order?: number;
 }
 
-export const PRODUCTS: PlannerProduct[] = [
+export const DEFAULT_PRODUCTS: PlannerProduct[] = [
   {
     id: 'adhd-planner-2026',
     nameKey: 'prod_adhd_name',
@@ -33,7 +35,9 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 14.90,
     priceBrl: 47.90,
     image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_adhd_tag'
+    tagKey: 'prod_adhd_tag',
+    active: true,
+    order: 1,
   },
   {
     id: 'it-girl-wellness',
@@ -42,7 +46,9 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 12.90,
     priceBrl: 37.90,
     image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_itgirl_tag'
+    tagKey: 'prod_itgirl_tag',
+    active: true,
+    order: 2,
   },
   {
     id: 'undated-digital-planner',
@@ -51,7 +57,9 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 14.90,
     priceBrl: 47.90,
     image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_undated_tag'
+    tagKey: 'prod_undated_tag',
+    active: true,
+    order: 3,
   },
   {
     id: 'small-business-os',
@@ -60,7 +68,9 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 19.90,
     priceBrl: 67.90,
     image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_smallbiz_tag'
+    tagKey: 'prod_smallbiz_tag',
+    active: true,
+    order: 4,
   },
   {
     id: 'meal-prep-weekly',
@@ -69,7 +79,9 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 9.90,
     priceBrl: 27.90,
     image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_meal_tag'
+    tagKey: 'prod_meal_tag',
+    active: true,
+    order: 5,
   },
   {
     id: 'weight-loss-tracker',
@@ -78,8 +90,10 @@ export const PRODUCTS: PlannerProduct[] = [
     priceUsd: 9.90,
     priceBrl: 27.90,
     image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_weight_tag'
-  }
+    tagKey: 'prod_weight_tag',
+    active: true,
+    order: 6,
+  },
 ];
 
 interface UserProfile {
@@ -100,6 +114,8 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 interface PurchasesContextType {
   purchasedIds: string[];
+  products: PlannerProduct[];
+  isLoadingProducts: boolean;
   buyPlanner: (id: string) => void;
 }
 
@@ -108,7 +124,9 @@ const PurchasesContext = createContext<PurchasesContextType>({} as PurchasesCont
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
+  const [products, setProducts] = useState<PlannerProduct[]>(DEFAULT_PRODUCTS);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -130,6 +148,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [isDark]);
 
   const toggleTheme = () => setIsDark(prev => !prev);
+
+  // Load products from Firestore
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const q = query(collection(db, 'products'));
+        const snapshot = await getDocs(q);
+        const productsList = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id
+        })) as PlannerProduct[];
+        
+        // Manual sort by order field
+        const sorted = productsList.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Firestore can override the catalog, but an empty/missing collection should not blank the store.
+        const activeProducts = sorted.filter(p => p.active !== false);
+        setProducts(activeProducts.length > 0 ? activeProducts : DEFAULT_PRODUCTS);
+      } catch (error) {
+        console.error("Error loading products:", error);
+        setProducts(DEFAULT_PRODUCTS);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    }
+    loadProducts();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
@@ -188,14 +233,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     signOut(auth);
   };
 
-  // Temporarily simulate a webhook purchase
-  const buyPlanner = async (plannerId: string) => {
-    if (!user) return;
-    const updated = [...purchasedIds, plannerId];
-    setPurchasedIds(updated);
-    
-    // In production, this is done securely by the Stripe/Kiwify Webhook!
-    await setDoc(doc(db, 'users', user.id), { purchasedPlanners: updated }, { merge: true });
+  const buyPlanner = async () => {
+    throw new Error('Purchases must be granted by a verified payment webhook.');
   };
 
   if (isLoading) {
@@ -205,7 +244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme }}>
       <AuthContext.Provider value={{ user, login, logout, isLoading }}>
-          <PurchasesContext.Provider value={{ purchasedIds, buyPlanner }}>
+          <PurchasesContext.Provider value={{ purchasedIds, products, isLoadingProducts, buyPlanner }}>
               {children}
           </PurchasesContext.Provider>
       </AuthContext.Provider>

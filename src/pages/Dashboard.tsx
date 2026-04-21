@@ -1,18 +1,19 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth, usePurchases, PRODUCTS } from '../store';
+import { useAuth, usePurchases } from '../store';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { purchasedIds } = usePurchases();
+  const { purchasedIds, products, isLoadingProducts } = usePurchases();
   const { t } = useTranslation();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const purchasedProducts = PRODUCTS.filter(p => purchasedIds.includes(p.id));
-  const unpurchasedProducts = PRODUCTS.filter(p => !purchasedIds.includes(p.id)).slice(0, 3); // Show top 3
+  const isPro = purchasedIds.includes('pro');
+  const purchasedProducts = isPro ? products : products.filter(p => purchasedIds.includes(p.id));
+  const unpurchasedProducts = isPro ? [] : products.filter(p => !purchasedIds.includes(p.id)).slice(0, 3); // Show top 3
 
   return (
     <div className="max-w-7xl w-full mx-auto px-4 sm:px-8 py-12 md:py-16">

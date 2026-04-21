@@ -1,11 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'motion/react';
-import { useAuth, usePurchases, PRODUCTS } from '../store';
+import { useAuth, usePurchases } from '../store';
 
 export default function Home() {
   const { user } = useAuth();
-  const { purchasedIds } = usePurchases();
+  const { purchasedIds, products, isLoadingProducts } = usePurchases();
 
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -275,52 +275,62 @@ export default function Home() {
             <p className="opacity-60 text-lg md:text-xl">{t('price_single_t')}</p>
           </div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
-            {PRODUCTS.map(product => {
-            const isPurchased = purchasedIds.includes(product.id);
+          {isLoadingProducts ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+               {[1,2,3].map(i => (
+                 <div key={i} className="bg-sidebar rounded-2xl h-80 animate-pulse border border-line" />
+               ))}
+            </div>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+              {products.map(product => {
+                const isPurchased = purchasedIds.includes(product.id);
 
-            return (
-              <div key={product.id} className="bg-sidebar rounded-2xl border border-line overflow-hidden hover:shadow-2xl hover:-translate-y-1 hover:shadow-accent/5 transition-all duration-500 flex flex-col group">
-                <div className="aspect-[4/3] bg-sidebar relative overflow-hidden">
-                  <div className="absolute top-4 left-4 z-10 bg-sidebar/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold text-accent uppercase tracking-widest">
-                    {t(product.tagKey)}
+                return (
+                  <div key={product.id} className="bg-sidebar rounded-2xl border border-line overflow-hidden hover:shadow-2xl hover:-translate-y-1 hover:shadow-accent/5 transition-all duration-500 flex flex-col group">
+                    <div className="aspect-[4/3] bg-sidebar relative overflow-hidden">
+                      {product.tagKey && (
+                        <div className="absolute top-4 left-4 z-10 bg-sidebar/90 backdrop-blur-sm px-3 py-1 rounded-full text-[10px] font-bold text-accent uppercase tracking-widest">
+                          {t(product.tagKey as any)}
+                        </div>
+                      )}
+                      <img 
+                        src={product.image} 
+                        alt={t(product.nameKey as any)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="p-6 sm:p-8 flex flex-col flex-1">
+                      <h3 className="font-serif text-xl sm:text-2xl font-bold mb-2">{t(product.nameKey as any)}</h3>
+                      <p className="opacity-60 mb-6 sm:mb-8 flex-1 text-xs sm:text-sm leading-relaxed">{t(product.descKey as any)}</p>
+                      
+                      <div className="flex items-center justify-between mt-auto pt-6 border-t border-line/50">
+                        <span className="text-lg sm:text-xl font-serif italic text-accent">
+                          {formatPrice(product.priceUsd, product.priceBrl)}
+                        </span>
+                        {isPurchased ? (
+                          <Link 
+                            to="/dashboard"
+                            className="text-[10px] font-bold uppercase tracking-widest bg-sidebar border border-line text-ink px-5 py-2.5 rounded hover:bg-line transition-colors"
+                          >
+                            {t('owned')}
+                          </Link>
+                        ) : (
+                          <button 
+                            onClick={() => handleBuy(product.id)}
+                            className="text-[10px] font-bold uppercase tracking-widest bg-accent text-paper px-5 py-2.5 rounded hover:opacity-90 transition-opacity shadow-sm"
+                          >
+                            {t('buy_now')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <img 
-                    src={product.image} 
-                    alt={t(product.nameKey)}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    referrerPolicy="no-referrer"
-                  />
-                </div>
-                <div className="p-6 sm:p-8 flex flex-col flex-1">
-                  <h3 className="font-serif text-xl sm:text-2xl font-bold mb-2">{t(product.nameKey)}</h3>
-                  <p className="opacity-60 mb-6 sm:mb-8 flex-1 text-xs sm:text-sm leading-relaxed">{t(product.descKey)}</p>
-                  
-                  <div className="flex items-center justify-between mt-auto pt-6 border-t border-line/50">
-                    <span className="text-lg sm:text-xl font-serif italic text-accent">
-                      {formatPrice(product.priceUsd, product.priceBrl)}
-                    </span>
-                    {isPurchased ? (
-                      <Link 
-                        to="/dashboard"
-                        className="text-[10px] font-bold uppercase tracking-widest bg-sidebar border border-line text-ink px-5 py-2.5 rounded hover:bg-line transition-colors"
-                      >
-                        {t('owned')}
-                      </Link>
-                    ) : (
-                      <button 
-                        onClick={() => handleBuy(product.id)}
-                        className="text-[10px] font-bold uppercase tracking-widest bg-ink text-white px-5 py-2.5 rounded hover:opacity-90 transition-opacity"
-                      >
-                        {t('buy_now')}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

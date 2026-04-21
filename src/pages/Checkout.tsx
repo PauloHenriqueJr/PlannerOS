@@ -1,19 +1,20 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth, usePurchases, PRODUCTS } from '../store';
+import { useAuth, usePurchases } from '../store';
 import { useState } from 'react';
+import { auth } from '../firebase';
 
 export default function Checkout() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { buyPlanner } = usePurchases();
+  const { products } = usePurchases();
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isPro = productId === 'pro';
-  const product = PRODUCTS.find(p => p.id === productId);
+  const product = products.find(p => p.id === productId);
   
   const isPt = i18n.language === 'pt';
 
@@ -38,19 +39,20 @@ export default function Checkout() {
     setError(null);
     
     try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error('Authentication token unavailable. Please sign in again.');
+      }
+
       const response = await fetch('/api/checkout/stripe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           productId: isPro ? 'pro' : product?.id,
-          priceUsd: usdPrice,
-          priceBrl: brlPrice,
-          title,
           isPt,
-          email: user?.email,
-          userId: user?.uid, // Used as client_reference_id
         }),
       });
 

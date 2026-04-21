@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAuth, usePurchases, PRODUCTS } from '../store';
+import { useAuth, usePurchases } from '../store';
 import { useCloudSync } from '../lib/useCloudSync';
 import { 
   format, 
@@ -13,9 +13,20 @@ import {
   getDay, 
   isSameDay
 } from 'date-fns';
+import { enUS, ptBR } from 'date-fns/locale';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
-import { Moon, Sun, Printer, Maximize, Minimize, Play, Pause, RotateCcw, Headphones, Mic, MicOff, Brain, Coffee, Sparkles, Smile, ListChecks, Calendar, Receipt, Briefcase, BookHeart } from 'lucide-react';
+import { Moon, Sun, Printer, Maximize, Minimize, Mic, MicOff, Brain, Coffee, Sparkles, Smile, ListChecks, Receipt, Briefcase, BookHeart, Target, ClipboardList, Trophy, HeartHandshake, Ruler } from 'lucide-react';
+import EmptyStateGuide from '../components/EmptyStateGuide';
+import ViewHeader from '../components/ViewHeader';
+import PomodoroBar from '../components/PomodoroBar';
+import ShortcutsHelp from '../components/ShortcutsHelp';
+import ProgressWidget from '../components/ProgressWidget';
+import TemplatePicker from '../components/TemplatePicker';
+import { usePomodoro } from '../lib/usePomodoro';
+import { useShortcuts } from '../lib/useShortcuts';
+import { useDailyProgress } from '../lib/useDailyProgress';
+import { TEMPLATES, type PlannerTemplate } from '../lib/templates';
 
 interface Task {
   id: string;
@@ -25,13 +36,26 @@ interface Task {
 
 // --- Reusable Views ---
 
-function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTasks }: any) {
-  const dateKey = format(new Date(), 'yyyy-MM-dd');
+function TaskView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, howKey, emptyExamples, emptyIcon, selectedDate = new Date() }: any) {
+  const dateKey = format(selectedDate, 'yyyy-MM-dd');
   const docId = `${storagePrefix}_${plannerId}_${dateKey}`;
-  const { t } = useTranslation();
-  
-  const [tasks, setTasks, isSyncing] = useCloudSync<Task[]>(docId, initialTasks || []);
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'pt' ? ptBR : enUS;
+
+  const [tasks, setTasks, isSyncing] = useCloudSync<Task[]>(docId, []);
   const [newTask, setNewTask] = useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const addExample = (labelKey: string) => {
+    setTasks((prev) => [...prev, { id: uuidv4(), text: labelKey, completed: false }]);
+  };
+
+  const applyTemplate = (template: PlannerTemplate) => {
+    setTasks((prev) => [
+      ...prev,
+      ...(template.items as string[]).map((text) => ({ id: uuidv4(), text, completed: false })),
+    ]);
+  };
 
   const addTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,95 +73,6 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
   };
 
   const completedCount = tasks.filter((t: Task) => t.completed).length;
-
-  // --- Pomodoro Logic ---
-  const [pomoTime, setPomoTime] = useState(25 * 60);
-  const [pomoActive, setPomoActive] = useState(false);
-  const [soundActive, setSoundActive] = useState(false);
-
-  const audioCtxRef = React.useRef<AudioContext | null>(null);
-  const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
-
-  const toggleSound = () => {
-    if (soundActive) {
-      if (audioSourceRef.current) {
-        audioSourceRef.current.stop();
-        audioSourceRef.current.disconnect();
-      }
-      if (audioCtxRef.current) {
-        audioCtxRef.current.close().catch(() => {});
-      }
-      setSoundActive(false);
-      return;
-    }
-
-    try {
-      const AudioCtxConstructor = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AudioCtxConstructor();
-      audioCtxRef.current = ctx;
-
-      const bufferSize = ctx.sampleRate * 2; 
-      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const data = buffer.getChannelData(0);
-
-      let lastOut = 0;
-      for (let i = 0; i < bufferSize; i++) {
-          const white = Math.random() * 2 - 1;
-          data[i] = (lastOut + (0.02 * white)) / 1.02;
-          lastOut = data[i];
-          data[i] *= 3.5; 
-      }
-
-      const noiseSource = ctx.createBufferSource();
-      noiseSource.buffer = buffer;
-      noiseSource.loop = true;
-      audioSourceRef.current = noiseSource;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 400; 
-
-      const gainNode = ctx.createGain();
-      gainNode.gain.value = 0.5; 
-
-      noiseSource.connect(filter);
-      filter.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      noiseSource.start();
-      setSoundActive(true);
-    } catch (e) {
-      console.warn("Áudio não suportado", e);
-    }
-  };
-
-  useEffect(() => {
-    let interval: any;
-    if (pomoActive && pomoTime > 0) {
-      interval = setInterval(() => setPomoTime(t => t - 1), 1000);
-    } else if (pomoTime === 0) {
-      setPomoActive(false);
-      // Pomo finished!
-    }
-    return () => clearInterval(interval);
-  }, [pomoActive, pomoTime]);
-
-  const togglePomo = () => {
-    if (!pomoActive && !document.fullscreenElement) {
-       document.documentElement.requestFullscreen().catch(() => {});
-    }
-    setPomoActive(!pomoActive);
-  };
-  const resetPomo = () => {
-    setPomoActive(false);
-    setPomoTime(25 * 60);
-  };
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60).toString().padStart(2, '0');
-    const s = (secs % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
-  };
 
   // --- Voice to Task Logic ---
   const [isListening, setIsListening] = useState(false);
@@ -174,42 +109,20 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
     recognition.start();
   };
 
+  useEffect(() => {
+    const handleFocusRequest = () => inputRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 md:mb-10 gap-4 shrink-0">
-        <div className="flex items-center gap-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-            <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • {t(subtitle)}</p>
-          </div>
-          
-          {/* Pomodoro Pill */}
-          <div className="hidden sm:flex items-center gap-3 bg-sidebar border border-line rounded-full px-4 py-2 shadow-sm">
-             <div className="font-serif italic font-bold text-accent text-lg w-14 text-center">
-               {formatTime(pomoTime)}
-             </div>
-             <div className="h-4 w-[1px] bg-line"></div>
-             <button onClick={togglePomo} className="text-ink hover:text-accent transition-colors" title="Iniciar/Pausar Foco">
-                {pomoActive ? <Pause size={16} /> : <Play size={16} />}
-             </button>
-             <button onClick={resetPomo} className="text-ink hover:text-accent transition-colors" title="Resetar Timer">
-                <RotateCcw size={16} />
-             </button>
-             <button onClick={toggleSound} className={cn("transition-colors ml-1", soundActive ? "text-accent animate-pulse" : "text-ink/40 hover:text-ink")} title="Ruído Marrom">
-                <Headphones size={16} />
-             </button>
-          </div>
-        </div>
-        <div className="flex space-x-2 print:hidden">
-          <button onClick={() => document.documentElement.classList.toggle('dark')} title={t('dark_mode')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
-             <Moon size={16} className="hidden dark:block" />
-             <Sun size={16} className="block dark:hidden" />
-          </button>
-          <button onClick={() => window.print()} title={t('print_planner')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
-            <Printer size={16} />
-          </button>
-        </div>
-      </div>
+      <ViewHeader
+        title={title}
+        subtitle={subtitle}
+        detail={format(selectedDate, 'EEEE, MMMM do', { locale })}
+        descriptionKey={whatKey}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-10 flex-1 overflow-auto pb-8">
         {/* Column 1 */}
@@ -218,6 +131,7 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
             <label className="text-[10px] uppercase tracking-widest font-bold text-accent block mb-3">{t('quick_add')}</label>
             <form onSubmit={addTask} className="flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={newTask}
                 onChange={(e) => setNewTask(e.target.value)}
@@ -255,8 +169,20 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
         {/* Column 2 */}
         <div>
           <label className="text-[10px] uppercase tracking-widest font-bold text-accent block mb-3">{t('checklist')}</label>
+          {tasks.length === 0 && (whatKey || howKey || emptyExamples?.length) && (
+            <EmptyStateGuide
+              icon={emptyIcon}
+              whatKey={whatKey}
+              howKey={howKey}
+              examples={(emptyExamples || []).map((labelKey: string) => ({
+                labelKey,
+                onClick: () => addExample(labelKey),
+              }))}
+              footer={<TemplatePicker templates={TEMPLATES.tasks} onApply={applyTemplate} />}
+            />
+          )}
           <ul className="space-y-4">
-            {tasks.length === 0 ? (
+            {tasks.length === 0 && !(whatKey || howKey || emptyExamples?.length) ? (
                <li className="text-sm opacity-50 italic">{t('no_tasks')}</li>
             ) : (
               tasks.map((task: Task) => (
@@ -295,48 +221,77 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
   );
 }
 
-function TextAreaView({ plannerId, userId, title, subtitle, storagePrefix, placeholder }: any) {
+function TextAreaView({ plannerId, userId, title, subtitle, storagePrefix, placeholder, whatKey, howKey, emptyPrompts }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
   const [content, setContent, isSyncing] = useCloudSync<string>(docId, "");
   const { t } = useTranslation();
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const addPrompt = (promptKey: string) => {
+    setContent((prev) => `${prev}${prev ? '\n\n' : ''}${t(promptKey)}`);
+  };
+
+  useEffect(() => {
+    const handleFocusRequest = () => textareaRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
 
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
-        </div>
-        <div className="flex space-x-2 print:hidden">
-          <button onClick={() => document.documentElement.classList.toggle('dark')} title={t('dark_mode')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
-             <Moon size={16} className="hidden dark:block" />
-             <Sun size={16} className="block dark:hidden" />
-          </button>
-          <button onClick={() => window.print()} title={t('print_planner')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
-            <Printer size={16} />
-          </button>
-        </div>
-      </div>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey || howKey} />
       
       <div className="flex-1 flex flex-col pb-4 md:pb-8 min-h-[300px]">
         <label className="text-[10px] uppercase tracking-widest font-bold text-accent block mb-2 md:mb-3">{t('workspace')}</label>
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder={t(placeholder)}
           className="flex-1 w-full border border-line bg-sidebar rounded-lg p-4 md:p-6 text-sm font-serif leading-relaxed text-ink focus:outline-none focus:border-accent transition-colors resize-none shadow-inner"
         />
+        {!content.trim() && emptyPrompts?.length > 0 && (
+          <div className="mt-4 rounded-2xl border border-dashed border-accent/30 bg-sidebar/70 p-4">
+            <div className="text-[10px] uppercase font-bold tracking-widest text-accent mb-3">
+              {t('empty_textarea_prompts')}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {emptyPrompts.map((promptKey: string) => (
+                <button
+                  key={promptKey}
+                  type="button"
+                  onClick={() => addPrompt(promptKey)}
+                  className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:border-accent hover:text-accent transition-colors"
+                >
+                  {t(promptKey)}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, initialHabits }: any) {
+function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, howKey, emptyExamples, emptyIcon }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
   const { t } = useTranslation();
-  
-  const [habits, setHabits, isSyncing] = useCloudSync<{ id: string; name: string; days: Record<string, boolean> }[]>(docId, initialHabits || []);
+
+  const [habits, setHabits, isSyncing] = useCloudSync<{ id: string; name: string; days: Record<string, boolean> }[]>(docId, []);
   const [newHabit, setNewHabit] = useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const addExample = (labelKey: string) => {
+    setHabits((prev) => [...prev, { id: uuidv4(), name: labelKey, days: {} }]);
+  };
+
+  const applyTemplate = (template: PlannerTemplate) => {
+    setHabits((prev) => [
+      ...prev,
+      ...(template.items as string[]).map((name) => ({ id: uuidv4(), name, days: {} })),
+    ]);
+  };
 
   const addHabit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -370,14 +325,15 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, initial
     return d;
   });
 
+  useEffect(() => {
+    const handleFocusRequest = () => inputRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
   return (
     <div className={cn("animate-in fade-in duration-500 flex flex-col h-full", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
-        </div>
-      </div>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
 
       <div className="mb-8 md:mb-10 overflow-x-auto pb-4">
         <table className="w-full text-left border-collapse min-w-[400px] md:min-w-[500px]">
@@ -427,12 +383,28 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, initial
           </tbody>
         </table>
         {habits.length === 0 && (
-          <div className="text-center py-8 opacity-50 text-sm font-serif italic border-t border-line">{t('no_habits')}</div>
+          (whatKey || howKey || emptyExamples?.length) ? (
+            <div className="py-6">
+              <EmptyStateGuide
+                icon={emptyIcon}
+                whatKey={whatKey}
+                howKey={howKey}
+                examples={(emptyExamples || []).map((labelKey: string) => ({
+                  labelKey,
+                  onClick: () => addExample(labelKey),
+                }))}
+                footer={<TemplatePicker templates={TEMPLATES.habits} onApply={applyTemplate} />}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-8 opacity-50 text-sm font-serif italic border-t border-line">{t('no_habits')}</div>
+          )
         )}
       </div>
 
       <form onSubmit={addHabit} className="flex gap-2 max-w-sm mt-auto">
         <input
+          ref={inputRef}
           type="text"
           value={newHabit}
           onChange={(e) => setNewHabit(e.target.value)}
@@ -447,14 +419,26 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, initial
   );
 }
 
-function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, columnHeaders, initialData }: any) {
+function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, columnHeaders, whatKey, howKey, emptyExamples, emptyIcon }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
   const { t } = useTranslation();
-  
-  const [rows, setRows, isSyncing] = useCloudSync<{id: string, col1: string, col2: string}[]>(docId, initialData || []);
-  
+
+  const [rows, setRows, isSyncing] = useCloudSync<{id: string, col1: string, col2: string}[]>(docId, []);
+
   const [newVal1, setNewVal1] = useState("");
   const [newVal2, setNewVal2] = useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  const addExample = (pair: [string, string]) => {
+    setRows((prev) => [...prev, { id: uuidv4(), col1: pair[0], col2: pair[1] }]);
+  };
+
+  const applyTemplate = (template: PlannerTemplate) => {
+    setRows((prev) => [
+      ...prev,
+      ...(template.items as [string, string][]).map(([col1, col2]) => ({ id: uuidv4(), col1, col2 })),
+    ]);
+  };
 
   const addRow = (e: React.FormEvent) => {
     e.preventDefault();
@@ -468,14 +452,15 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
     setRows((prev) => prev.filter(r => r.id !== id));
   };
 
+  useEffect(() => {
+    const handleFocusRequest = () => inputRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
   return (
     <div className={cn("animate-in fade-in duration-500 flex flex-col h-full", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
-        </div>
-      </div>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
 
       <div className="flex-1 overflow-x-auto pb-4">
         <table className="w-full text-left border-collapse min-w-[400px] md:min-w-[500px]">
@@ -504,12 +489,28 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
           </tbody>
         </table>
         {rows.length === 0 && (
-          <div className="text-center py-8 opacity-50 text-sm font-serif italic border-t border-line">{t('no_data')}</div>
+          (whatKey || howKey || emptyExamples?.length) ? (
+            <div className="py-4">
+              <EmptyStateGuide
+                icon={emptyIcon}
+                whatKey={whatKey}
+                howKey={howKey}
+                examples={(emptyExamples || []).map((pair: [string, string]) => ({
+                  labelKey: pair[0],
+                  onClick: () => addExample(pair),
+                }))}
+                footer={<TemplatePicker templates={TEMPLATES.table} onApply={applyTemplate} />}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-8 opacity-50 text-sm font-serif italic border-t border-line">{t('no_data')}</div>
+          )
         )}
       </div>
 
       <form onSubmit={addRow} className="flex gap-4 max-w-lg mt-auto pt-6 border-t border-line shrink-0">
         <input
+          ref={inputRef}
           type="text"
           value={newVal1}
           onChange={(e) => setNewVal1(e.target.value)}
@@ -533,11 +534,14 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
 
 // --- Specific Views ---
 
-function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix }: any) {
+function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix, whatKey }: any) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [focusedDayKey, setFocusedDayKey] = useState('');
   const monthKey = format(currentMonth, 'yyyy-MM');
   const docId = `${storagePrefix}_${plannerId}_${monthKey}`;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'pt' ? ptBR : enUS;
+  const firstEditableDayRef = React.useRef<HTMLTextAreaElement | null>(null);
   
   const [notes, setNotes, isSyncing] = useCloudSync<Record<string, string>>(docId, {});
 
@@ -551,23 +555,60 @@ function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix
   const startDayOfWeek = getDay(start); // 0 (Sun) to 6 (Sat)
   
   const emptyDaysBefore = Array.from({ length: startDayOfWeek }, (_, i) => i);
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const firstFocusableDayKey = days.some((day) => format(day, 'yyyy-MM-dd') === todayKey)
+    ? todayKey
+    : format(days[0], 'yyyy-MM-dd');
+
+  useEffect(() => {
+    const handleFocusRequest = () => firstEditableDayRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
+  useEffect(() => {
+    const handleOpenDate = (event: Event) => {
+      const date = (event as CustomEvent<{ date?: string }>).detail?.date;
+      if (!date) return;
+      setFocusedDayKey(date);
+      setCurrentMonth(new Date(`${date}T00:00:00`));
+    };
+
+    window.addEventListener('planner:open-date', handleOpenDate);
+    return () => window.removeEventListener('planner:open-date', handleOpenDate);
+  }, []);
+
+  useEffect(() => {
+    if (!focusedDayKey || format(currentMonth, 'yyyy-MM') !== focusedDayKey.slice(0, 7)) return;
+    window.setTimeout(() => {
+      document.querySelector<HTMLTextAreaElement>(`[data-month-day="${focusedDayKey}"]`)?.focus();
+    }, 50);
+  }, [currentMonth, focusedDayKey]);
 
   return (
     <div className={cn("animate-in fade-in duration-500 flex flex-col h-full", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-center mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{format(currentMonth, 'MMMM yyyy')}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
-        </div>
-        <div className="flex space-x-2">
+      <ViewHeader
+        title={format(currentMonth, 'MMMM yyyy', { locale })}
+        subtitle={subtitle}
+        descriptionKey={whatKey}
+        actions={(
+          <div className="flex space-x-2">
           <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="w-8 h-8 rounded-full border border-line flex items-center justify-center text-xs hover:bg-sidebar transition-colors text-ink">&larr;</button>
           <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="w-8 h-8 rounded-full border border-line flex items-center justify-center text-xs hover:bg-sidebar transition-colors text-ink">&rarr;</button>
-        </div>
+          </div>
+        )}
+      />
+
+      <div className="mb-4 rounded-2xl border border-dashed border-accent/30 bg-sidebar/70 px-4 py-3 text-xs text-ink/65">
+        {t('empty_month_hint')}
       </div>
       
       <div className="flex-1 overflow-auto rounded-xl border border-line bg-sidebar shadow-inner flex flex-col">
         <div className="grid grid-cols-7 gap-px bg-line shrink-0">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          {(i18n.language === 'pt' 
+            ? ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] 
+            : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+          ).map(d => (
             <div key={d} className="bg-sidebar p-2 text-center text-[10px] uppercase font-bold text-accent tracking-widest">{d}</div>
           ))}
         </div>
@@ -582,6 +623,8 @@ function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix
               <div key={dayKey} className={cn("bg-sidebar p-2 flex flex-col h-full min-h-[80px] hover:bg-sidebar/50 transition-colors", isToday && "bg-accent/5")}>
                 <span className={cn("text-xs font-serif italic mb-1", isToday ? "font-bold text-accent" : "text-ink opacity-50")}>{format(day, 'd')}</span>
                 <textarea 
+                  ref={dayKey === firstFocusableDayKey ? firstEditableDayRef : undefined}
+                  data-month-day={dayKey}
                   value={notes[dayKey] || ''}
                   onChange={e => handleNoteChange(dayKey, e.target.value)}
                   className="w-full flex-1 resize-none bg-transparent outline-none text-xs text-ink/80 leading-relaxed font-sans scrollbar-hide"
@@ -595,11 +638,13 @@ function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix
   );
 }
 
-function DailyScheduleView({ plannerId, userId, title, subtitle, storagePrefix }: any) {
-  const dateKey = format(new Date(), 'yyyy-MM-dd');
+function DailyScheduleView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, selectedDate = new Date() }: any) {
+  const dateKey = format(selectedDate, 'yyyy-MM-dd');
   const docId = `${storagePrefix}_${plannerId}_${dateKey}`;
   const HOURS = Array.from({length: 17}, (_, i) => i + 6); // 6 AM to 10 PM
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'pt' ? ptBR : enUS;
+  const primaryInputRef = React.useRef<HTMLInputElement>(null);
   
   const [data, setData, isSyncing] = useCloudSync<any>(docId, {
     schedule: {}, // { "6": "Wake up", "7": "Gym" }
@@ -617,14 +662,26 @@ function DailyScheduleView({ plannerId, userId, title, subtitle, storagePrefix }
       return { ...prev, priorities: newP };
     });
   };
+  const currentHour = new Date().getHours();
+  const focusHour = HOURS.includes(currentHour) ? currentHour : HOURS[0];
+
+  useEffect(() => {
+    const handleFocusRequest = () => primaryInputRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
 
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 md:mb-10 gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • {t(subtitle)}</p>
-        </div>
+      <ViewHeader
+        title={title}
+        subtitle={subtitle}
+        detail={format(selectedDate, 'EEEE, MMMM do', { locale })}
+        descriptionKey={whatKey}
+      />
+
+      <div className="mb-4 rounded-2xl border border-dashed border-accent/30 bg-sidebar/70 px-4 py-3 text-xs text-ink/65">
+        {t('empty_schedule_hint')}
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-8 overflow-y-auto pr-2 pb-4">
@@ -641,6 +698,7 @@ function DailyScheduleView({ plannerId, userId, title, subtitle, storagePrefix }
                     {displayHour}:00 {ampm}
                   </div>
                   <input 
+                    ref={hour === focusHour ? primaryInputRef : undefined}
                     type="text" 
                     value={data.schedule[hour] || ''}
                     onChange={e => handleScheduleChange(hour, e.target.value)}
@@ -687,11 +745,13 @@ function DailyScheduleView({ plannerId, userId, title, subtitle, storagePrefix }
   );
 }
 
-function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: any) {
+function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix, whatKey }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
   const { t } = useTranslation();
+  const [showHint, setShowHint] = useState(true);
+  const firstMealRef = React.useRef<HTMLInputElement>(null);
 
   const init: Record<string, Record<string, string>> = {};
   DAYS.forEach(d => {
@@ -700,6 +760,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
   });
 
   const [meals, setMeals, isSyncing] = useCloudSync<Record<string, Record<string, string>>>(docId, init);
+  const hasMeals = Object.values(meals).some((dayMeals) => Object.values(dayMeals || {}).some(Boolean));
 
   const handleChange = (day: string, meal: string, val: string) => {
     setMeals((prev: Record<string, Record<string, string>>) => ({
@@ -711,14 +772,24 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
     }));
   };
 
+  useEffect(() => {
+    const handleFocusRequest = () => firstMealRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
   return (
     <div className={cn("animate-in fade-in duration-500 flex flex-col h-full", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
+
+      {showHint && !hasMeals && (
+        <div className="mb-4 rounded-2xl border border-dashed border-accent/30 bg-sidebar/70 px-4 py-3 text-xs text-ink/65 flex items-center justify-between gap-4">
+          <span>{t('empty_meals_hint')}</span>
+          <button type="button" onClick={() => setShowHint(false)} className="text-[10px] uppercase font-bold tracking-widest text-accent hover:opacity-70">
+            {t('dismiss')}
+          </button>
         </div>
-      </div>
+      )}
       
       <div className="flex-1 overflow-x-auto overflow-y-auto rounded-xl border border-line bg-sidebar shadow-inner pb-4">
         <div className="min-w-[600px] p-4 sm:p-6">
@@ -735,6 +806,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
                 <div className="text-sm font-serif font-bold italic opacity-70 group-hover:opacity-100 pl-2 text-ink">{day}</div>
                 {MEALS.map(meal => (
                   <input
+                    ref={day === DAYS[0] && meal === MEALS[0] ? firstMealRef : undefined}
                     key={`${day}-${meal}`}
                     value={meals[day]?.[meal] || ''}
                     onChange={e => handleChange(day, meal, e.target.value)}
@@ -751,7 +823,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
   );
 }
 
-function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }: any) {
+function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, howKey, emptyIcon }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
   const { t } = useTranslation();
   const [data, setData, isSyncing] = useCloudSync<any>(docId, {
@@ -763,14 +835,18 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }
 
   const [newWeight, setNewWeight] = useState("");
   const [newNote, setNewNote] = useState("");
+  const newWeightRef = React.useRef<HTMLInputElement>(null);
 
   const addLog = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWeight.trim()) return;
     
+    const { i18n } = useTranslation();
+    const locale = i18n.language === 'pt' ? ptBR : enUS;
+
     const newLog = {
       id: uuidv4(),
-      date: format(new Date(), 'MMM dd, yyyy'),
+      date: format(new Date(), 'MMM dd, yyyy', { locale }),
       weight: parseFloat(newWeight).toFixed(1),
       note: newNote.trim()
     };
@@ -784,6 +860,12 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }
     setData((prev: any) => ({ ...prev, logs: prev.logs.filter((l: any) => l.id !== id) }));
   };
 
+  useEffect(() => {
+    const handleFocusRequest = () => newWeightRef.current?.focus();
+    window.addEventListener('planner:focus-add', handleFocusRequest);
+    return () => window.removeEventListener('planner:focus-add', handleFocusRequest);
+  }, []);
+
   const startW = parseFloat(data.startWeight) || 0;
   const goalW = parseFloat(data.goalWeight) || 0;
   const currentW = data.logs.length > 0 ? parseFloat(data.logs[0].weight) : startW;
@@ -796,14 +878,20 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }
 
   return (
     <div className={cn("animate-in fade-in duration-500 flex flex-col h-full", isSyncing && "opacity-70")}>
-      <div className="flex justify-between items-start mb-6 md:mb-10 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{t(subtitle)}</p>
-        </div>
-      </div>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
 
       <div className="flex-1 overflow-y-auto pr-2 pb-4">
+        {data.logs.length === 0 && (whatKey || howKey) && (
+          <div className="mb-6">
+            <EmptyStateGuide
+              icon={emptyIcon}
+              whatKey={whatKey}
+              howKey={howKey}
+              footer={<p className="text-xs text-ink/55">{t('empty_weight_cta')}</p>}
+            />
+          </div>
+        )}
+
         {/* Goal Config & Progress */}
         <div className="p-6 bg-sidebar rounded-2xl border border-line mb-8 shadow-inner">
           <div className="flex flex-col md:flex-row gap-6 mb-8 border-b border-line pb-6">
@@ -859,7 +947,7 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix }
         <div className="mb-8">
            <label className="text-[10px] uppercase font-bold text-accent tracking-widest mb-3 block">{t('new_checkin')}</label>
            <form onSubmit={addLog} className="flex gap-4">
-             <input type="number" step="0.1" placeholder={`${t('weight_placeholder')} (${data.unit})`} value={newWeight} onChange={e => setNewWeight(e.target.value)} className="w-24 md:w-32 border-b border-line bg-transparent pb-2 text-sm font-sans focus:outline-none focus:border-accent transition-colors placeholder:opacity-40 text-ink" />
+             <input ref={newWeightRef} type="number" step="0.1" placeholder={`${t('weight_placeholder')} (${data.unit})`} value={newWeight} onChange={e => setNewWeight(e.target.value)} className="w-24 md:w-32 border-b border-line bg-transparent pb-2 text-sm font-sans focus:outline-none focus:border-accent transition-colors placeholder:opacity-40 text-ink" />
              <input type="text" placeholder={t('notes_placeholder')} value={newNote} onChange={e => setNewNote(e.target.value)} className="flex-1 border-b border-line bg-transparent pb-2 text-sm font-sans focus:outline-none focus:border-accent transition-colors placeholder:opacity-40 text-ink" />
              <button type="submit" className="text-[10px] uppercase tracking-widest font-bold text-white bg-accent hover:opacity-90 px-5 rounded transition-opacity shadow-sm">{t('log_btn')}</button>
            </form>
@@ -907,32 +995,32 @@ const PLANNER_CONFIGS: Record<string, any> = {
   'adhd-planner-2026': {
     bundleName: 'bundle_adhd',
     tabs: [
-      { id: 'focus', label: 'Foco de Hoje', icon: Brain, color: '#B8E1FF', component: TaskView, props: { title: "Foco Profundo", subtitle: "Prioridade #1", storagePrefix: "adhd_focus" } },
-      { id: 'dopamine', label: 'Dopamina', icon: Sparkles, color: '#FFFFCC', component: TaskView, props: { title: "Dopamine Menu", subtitle: "Recarregue as energias", storagePrefix: "adhd_dopamine" } },
-      { id: 'braindump', label: 'Brain Dump', icon: Coffee, color: '#FFF5E1', component: TextAreaView, props: { title: "Despejo Caótico", subtitle: "Limpeza de RAM mental", storagePrefix: "adhd_bd" } },
-      { id: 'projects', label: 'Projetos', icon: Briefcase, color: '#CCFFCC', component: TableDataView, props: { title: "Meus Projetos", subtitle: "Visão Geral", storagePrefix: "adhd_proj", columnHeaders: ["Projeto", "Status"] } },
-      { id: 'finances', label: 'Finanças', icon: Receipt, color: '#FFCCE5', component: TableDataView, props: { title: "Controle Financeiro", subtitle: "Entradas/Saídas", storagePrefix: "adhd_money", columnHeaders: ["Item", "Valor"] } },
-      { id: 'notes', label: 'Anotações', icon: ListChecks, color: '#E5CCFF', component: TextAreaView, props: { title: "Notas Rápidas", subtitle: "Idéias voláteis", storagePrefix: "adhd_notes" } }
+      { id: 'focus', label: 'Foco de Hoje', icon: Brain, color: '#B8E1FF', component: TaskView, props: { title: "Foco Profundo", subtitle: "Prioridade #1", storagePrefix: "adhd_focus", whatKey: 'adhd_focus_what', howKey: 'adhd_focus_how', emptyIcon: Target, emptyExamples: ['task_dump', 'task_water', 'task_priority'] } },
+      { id: 'dopamine', label: 'Dopamina', icon: Sparkles, color: '#FFFFCC', component: TaskView, props: { title: "Dopamine Menu", subtitle: "Recarregue as energias", storagePrefix: "adhd_dopamine", whatKey: 'adhd_dopamine_what', howKey: 'adhd_dopamine_how', emptyIcon: Sparkles, emptyExamples: ['habit_meds', 'habit_sun', 'habit_water_2l'] } },
+      { id: 'braindump', label: 'Brain Dump', icon: Coffee, color: '#FFF5E1', component: TextAreaView, props: { title: "Despejo Caótico", subtitle: "Limpeza de RAM mental", storagePrefix: "adhd_bd", whatKey: 'adhd_bd_what', howKey: 'adhd_bd_how', placeholder: 'placeholder_bd', emptyPrompts: ['prompt_bd_1', 'prompt_bd_2', 'prompt_bd_3'] } },
+      { id: 'projects', label: 'Projetos', icon: Briefcase, color: '#CCFFCC', component: TableDataView, props: { title: "Meus Projetos", subtitle: "Visão Geral", storagePrefix: "adhd_proj", columnHeaders: ["col_project", "col_status"], whatKey: 'adhd_proj_what', howKey: 'adhd_proj_how', emptyIcon: Briefcase, emptyExamples: [['proj_1', 'stat_progress'], ['proj_2', 'stat_pending']] } },
+      { id: 'finances', label: 'Finanças', icon: Receipt, color: '#FFCCE5', component: TableDataView, props: { title: "Controle Financeiro", subtitle: "Entradas/Saídas", storagePrefix: "adhd_money", columnHeaders: ["col_desc", "col_amount"], whatKey: 'adhd_money_what', howKey: 'adhd_money_how', emptyIcon: Receipt, emptyExamples: [['adhd_money_ex1', 'adhd_money_ex1_val'], ['adhd_money_ex2', 'adhd_money_ex2_val']] } },
+      { id: 'notes', label: 'Anotações', icon: ListChecks, color: '#E5CCFF', component: TextAreaView, props: { title: "Notas Rápidas", subtitle: "Idéias voláteis", storagePrefix: "adhd_notes", whatKey: 'adhd_notes_what', howKey: 'adhd_notes_how', placeholder: 'thoughts_placeholder', emptyPrompts: ['prompt_notes_1', 'prompt_notes_2', 'prompt_notes_3'] } }
     ]
   },
   'it-girl-wellness': {
     bundleName: 'bundle_wellness',
     tabs: [
-      { id: 'routine_am', label: 'Morning', icon: Sun, color: '#FFFFCC', component: TaskView, props: { title: "Rotina Matinal", subtitle: "Comece Radiante", storagePrefix: "well_am" } },
-      { id: 'routine_pm', label: 'Night', icon: Moon, color: '#B8E1FF', component: TaskView, props: { title: "Rotina Noturna", subtitle: "Desacelere", storagePrefix: "well_pm" } },
-      { id: 'journal', label: 'Journal', icon: BookHeart, color: '#E5CCFF', component: TextAreaView, props: { title: "Diário Mágico", subtitle: "Gratidão e Reflexão", storagePrefix: "well_journal" } },
-      { id: 'selfcare', label: 'Self-Care', icon: Sparkles, color: '#FFCCE5', component: TaskView, props: { title: "Checklist Autocuidado", subtitle: "Priorize-se", storagePrefix: "well_self" } },
-      { id: 'fitness', label: 'Fitness', icon: ListChecks, color: '#CCFFCC', component: HabitsView, props: { title: "Treino & Movimento", subtitle: "Atividade Física", storagePrefix: "well_fit" } },
-      { id: 'mood', label: 'Mood', icon: Smile, color: '#FFE5CC', component: HabitsView, props: { title: "Rastreador de Humor", subtitle: "Sentimentos", storagePrefix: "well_mood" } }
+      { id: 'routine_am', label: 'Morning', icon: Sun, color: '#FFFFCC', component: TaskView, props: { title: "Rotina Matinal", subtitle: "Comece Radiante", storagePrefix: "well_am", whatKey: 'well_am_what', howKey: 'well_am_how', emptyIcon: Sun, emptyExamples: ['task_skin', 'task_water', 'task_meditate'] } },
+      { id: 'routine_pm', label: 'Night', icon: Moon, color: '#B8E1FF', component: TaskView, props: { title: "Rotina Noturna", subtitle: "Desacelere", storagePrefix: "well_pm", whatKey: 'well_pm_what', howKey: 'well_pm_how', emptyIcon: Moon, emptyExamples: ['task_guasha', 'habit_read_10', 'habit_sleep_8'] } },
+      { id: 'journal', label: 'Journal', icon: BookHeart, color: '#E5CCFF', component: TextAreaView, props: { title: "Diário Mágico", subtitle: "Gratidão e Reflexão", storagePrefix: "well_journal", whatKey: 'well_journal_what', howKey: 'well_journal_how', placeholder: 'placeholder_journal', emptyPrompts: ['prompt_journal_1', 'prompt_journal_2', 'prompt_journal_3'] } },
+      { id: 'selfcare', label: 'Self-Care', icon: Sparkles, color: '#FFCCE5', component: TaskView, props: { title: "Checklist Autocuidado", subtitle: "Priorize-se", storagePrefix: "well_self", whatKey: 'well_self_what', howKey: 'well_self_how', emptyIcon: HeartHandshake, emptyExamples: ['task_skin', 'task_meditate', 'task_guasha'] } },
+      { id: 'fitness', label: 'Fitness', icon: ListChecks, color: '#CCFFCC', component: HabitsView, props: { title: "Treino & Movimento", subtitle: "Atividade Física", storagePrefix: "well_fit", whatKey: 'well_fit_what', howKey: 'well_fit_how', emptyIcon: ListChecks, emptyExamples: ['habit_water_2l', 'habit_sun', 'habit_sleep_8'] } },
+      { id: 'mood', label: 'Mood', icon: Smile, color: '#FFE5CC', component: HabitsView, props: { title: "Rastreador de Humor", subtitle: "Sentimentos", storagePrefix: "well_mood", whatKey: 'well_mood_what', howKey: 'well_mood_how', emptyIcon: Smile, emptyExamples: ['well_mood_ex1', 'well_mood_ex2', 'well_mood_ex3'] } }
     ]
   },
   'small-business-os': {
     bundleName: 'bundle_creator',
     tabs: [
-      { id: 'kanban', label: 'Sprint', icon: Briefcase, color: '#94a3b8', component: TableDataView, props: { title: "Sprint Kanban", subtitle: "Tarefas do Negócio", storagePrefix: "biz_tasks", columnHeaders: ["Tarefa", "Status"] } },
-      { id: 'cashflow', label: 'Fluxo', icon: Receipt, color: '#10b981', component: TableDataView, props: { title: "Fluxo de Caixa", subtitle: "Financeiro", storagePrefix: "biz_cash", columnHeaders: ["Descrição", "Valor"] } },
-      { id: 'clients', label: 'Clientes', icon: Briefcase, color: '#6366f1', component: TableDataView, props: { title: "CRM / Clientes", subtitle: "Contatos e Status", storagePrefix: "biz_crm", columnHeaders: ["Nome", "Status"] } },
-      { id: 'brainstorm', label: 'Lançamentos', icon: Sparkles, color: '#0ea5e9', component: TextAreaView, props: { title: "Brainstorm Estratégico", subtitle: "Novos Produtos", storagePrefix: "biz_launch" } }
+      { id: 'kanban', label: 'Sprint', icon: Briefcase, color: '#94a3b8', component: TableDataView, props: { title: "Sprint Kanban", subtitle: "Tarefas do Negócio", storagePrefix: "biz_tasks", columnHeaders: ["col_project", "col_status"], whatKey: 'biz_tasks_what', howKey: 'biz_tasks_how', emptyIcon: ClipboardList, emptyExamples: [['proj_1', 'stat_progress'], ['proj_2', 'stat_pending']] } },
+      { id: 'cashflow', label: 'Fluxo', icon: Receipt, color: '#10b981', component: TableDataView, props: { title: "Fluxo de Caixa", subtitle: "Financeiro", storagePrefix: "biz_cash", columnHeaders: ["col_desc", "col_amount"], whatKey: 'biz_cash_what', howKey: 'biz_cash_how', emptyIcon: Receipt, emptyExamples: [['biz_cash_ex1', 'biz_cash_ex1_val'], ['biz_cash_ex2', 'biz_cash_ex2_val']] } },
+      { id: 'clients', label: 'Clientes', icon: Briefcase, color: '#6366f1', component: TableDataView, props: { title: "CRM / Clientes", subtitle: "Contatos e Status", storagePrefix: "biz_crm", columnHeaders: ["col_project", "col_status"], whatKey: 'biz_crm_what', howKey: 'biz_crm_how', emptyIcon: Briefcase, emptyExamples: [['biz_crm_ex1', 'biz_crm_ex1_val'], ['biz_crm_ex2', 'biz_crm_ex2_val']] } },
+      { id: 'brainstorm', label: 'Lançamentos', icon: Sparkles, color: '#0ea5e9', component: TextAreaView, props: { title: "Brainstorm Estratégico", subtitle: "Novos Produtos", storagePrefix: "biz_launch", whatKey: 'biz_launch_what', howKey: 'biz_launch_how', placeholder: 'placeholder_ideas', emptyPrompts: ['prompt_launch_1', 'prompt_launch_2', 'prompt_launch_3'] } }
     ]
   },
   'undated-digital-planner': {
@@ -945,7 +1033,9 @@ const PLANNER_CONFIGS: Record<string, any> = {
         props: {
           title: "title_monthly_spread",
           subtitle: "sub_monthly",
-          storagePrefix: "monthly_view"
+          storagePrefix: "monthly_view",
+          whatKey: "monthly_view_what",
+          howKey: "monthly_view_how"
         }
       },
       {
@@ -955,7 +1045,9 @@ const PLANNER_CONFIGS: Record<string, any> = {
         props: {
           title: "title_daily_agenda",
           subtitle: "sub_daily",
-          storagePrefix: "daily_agenda"
+          storagePrefix: "daily_agenda",
+          whatKey: "daily_agenda_what",
+          howKey: "daily_agenda_how"
         }
       },
       {
@@ -966,11 +1058,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
           title: "title_run_tasks",
           subtitle: "sub_run_tasks",
           storagePrefix: "running_tasks",
-          initialTasks: [
-            { id: 't1', text: 'task_call_doc', completed: false },
-            { id: 't2', text: 'task_pay_bills', completed: true },
-            { id: 't3', text: 'task_read_20', completed: false }
-          ]
+          whatKey: "running_tasks_what",
+          howKey: "running_tasks_how",
+          emptyIcon: ListChecks,
+          emptyExamples: ['task_call_doc', 'task_pay_bills', 'task_read_20']
         }
       }
     ]
@@ -985,7 +1076,9 @@ const PLANNER_CONFIGS: Record<string, any> = {
         props: {
           title: "title_weekly_menu",
           subtitle: "sub_weekly_menu",
-          storagePrefix: "mealplan_weekly"
+          storagePrefix: "mealplan_weekly",
+          whatKey: "mealplan_weekly_what",
+          howKey: "mealplan_weekly_how"
         }
       },
       {
@@ -996,11 +1089,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
           title: "title_groceries",
           subtitle: "sub_groceries",
           storagePrefix: "groceries",
-          initialTasks: [
-            { id: 'g1', text: 'groc_1', completed: false },
-            { id: 'g2', text: 'groc_2', completed: false },
-            { id: 'g3', text: 'groc_3', completed: false }
-          ]
+          whatKey: "groceries_what",
+          howKey: "groceries_how",
+          emptyIcon: Receipt,
+          emptyExamples: ['groc_1', 'groc_2', 'groc_3']
         }
       },
       {
@@ -1012,10 +1104,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
           subtitle: "sub_recipes",
           storagePrefix: "recipes",
           columnHeaders: ["col_recipe", "col_prep"],
-          initialData: [
-            { id: 'r1', col1: 'rec_1', col2: 'rec_val_1' },
-            { id: 'r2', col1: 'rec_2', col2: 'rec_val_2' }
-          ]
+          whatKey: "recipes_what",
+          howKey: "recipes_how",
+          emptyIcon: BookHeart,
+          emptyExamples: [['rec_1', 'rec_val_1'], ['rec_2', 'rec_val_2']]
         }
       }
     ]
@@ -1030,7 +1122,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
         props: {
           title: "title_progress",
           subtitle: "sub_progress",
-          storagePrefix: "weight_progress"
+          storagePrefix: "weight_progress",
+          whatKey: "weight_progress_what",
+          howKey: "weight_progress_how",
+          emptyIcon: Target
         }
       },
       {
@@ -1042,10 +1137,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
           subtitle: "sub_measures",
           storagePrefix: "measurements_tracker",
           columnHeaders: ["col_body_part", "col_size"],
-          initialData: [
-            { id: 'm1', col1: 'meas_1', col2: 'meas_val_1' },
-            { id: 'm2', col1: 'meas_2', col2: 'meas_val_2' }
-          ]
+          whatKey: "measurements_tracker_what",
+          howKey: "measurements_tracker_how",
+          emptyIcon: Ruler,
+          emptyExamples: [['meas_1', 'meas_val_1'], ['meas_2', 'meas_val_2']]
         }
       },
       {
@@ -1056,16 +1151,94 @@ const PLANNER_CONFIGS: Record<string, any> = {
           title: "title_milestones",
           subtitle: "sub_milestones",
           storagePrefix: "milestones",
-          initialTasks: [
-            { id: 'ms1', text: 'ms_1', completed: false },
-            { id: 'ms2', text: 'ms_2', completed: false },
-            { id: 'ms3', text: 'ms_3', completed: false }
-          ]
+          whatKey: "milestones_what",
+          howKey: "milestones_how",
+          emptyIcon: Trophy,
+          emptyExamples: ['ms_1', 'ms_2', 'ms_3']
         }
       }
     ]
   }
 };
+
+function SidebarCalendar({
+  selectedDate,
+  onSelectDate,
+}: {
+  selectedDate: Date;
+  onSelectDate: (dateKey: string) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language === 'pt' ? ptBR : enUS;
+  const [visibleMonth, setVisibleMonth] = useState(new Date());
+  const today = new Date();
+  const start = startOfMonth(visibleMonth);
+  const end = endOfMonth(visibleMonth);
+  const days = eachDayOfInterval({ start, end });
+  const emptyDaysBefore = Array.from({ length: getDay(start) }, (_, index) => index);
+
+  return (
+    <div className="bg-paper border border-line rounded-xl p-4 shadow-sm shrink-0">
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={() => setVisibleMonth((current) => subMonths(current, 1))}
+          className="w-7 h-7 rounded-full border border-line flex items-center justify-center text-xs text-ink/60 hover:text-accent hover:border-accent/50 transition-colors"
+          aria-label={t('calendar_previous')}
+        >
+          &larr;
+        </button>
+        <h4 className="text-[10px] uppercase font-bold tracking-widest text-ink/70">
+          {format(visibleMonth, 'MMM yyyy', { locale })}
+        </h4>
+        <button
+          type="button"
+          onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
+          className="w-7 h-7 rounded-full border border-line flex items-center justify-center text-xs text-ink/60 hover:text-accent hover:border-accent/50 transition-colors"
+          aria-label={t('calendar_next')}
+        >
+          &rarr;
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center mb-2">
+        {(i18n.language === 'pt' 
+          ? ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'] 
+          : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+        ).map((day, index) => (
+          <div key={`${day}-${index}`} className="text-[8px] font-bold text-ink/40">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {emptyDaysBefore.map((index) => (
+          <div key={`empty-${index}`} />
+        ))}
+        {days.map((day) => {
+          const dateKey = format(day, 'yyyy-MM-dd');
+          const isToday = isSameDay(day, today);
+          const isSelected = isSameDay(day, selectedDate);
+
+          return (
+            <button
+              key={dateKey}
+              type="button"
+              onClick={() => onSelectDate(dateKey)}
+              className={cn(
+                "text-xs py-1 rounded-md flex items-center justify-center font-serif hover:bg-line/30 cursor-pointer transition-colors",
+                isSelected ? "bg-accent text-white font-bold shadow-sm" : "text-ink/70",
+                isToday && !isSelected && "ring-1 ring-accent/40"
+              )}
+              aria-label={`${t('calendar_open_date')} ${format(day, 'MMM d, yyyy', { locale })}`}
+            >
+              {format(day, 'd')}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // --- App Container ---
 
@@ -1077,11 +1250,33 @@ export default function PlannerApp() {
   
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [scratchpad, setScratchpad] = useState(() => localStorage.getItem('planner_scratchpad') || '');
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [scratchpad, setScratchpad, isScratchpadSyncing] = useCloudSync<string>(`scratchpad_${id || 'draft'}`, '');
+  const config = PLANNER_CONFIGS[id || ''] || PLANNER_CONFIGS['adhd-planner-2026'];
+  const currentTabId = activeTabId || config.tabs[0].id;
+  const activeTabConfig = config.tabs.find((tab: any) => tab.id === currentTabId) || config.tabs[0];
+  const ActiveComponent = activeTabConfig.component;
+  const { products } = usePurchases();
+  const product = products.find(p => p.id === id);
+  const pomodoro = usePomodoro();
+  const taskPrefixes = useMemo(
+    () => config.tabs
+      .filter((tab: any) => tab.component === TaskView)
+      .map((tab: any) => tab.props.storagePrefix)
+      .filter(Boolean),
+    [config]
+  );
+  const dailyProgress = useDailyProgress(id, taskPrefixes);
+  const focusCurrentAddInput = useCallback(() => {
+    window.dispatchEvent(new Event('planner:focus-add'));
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem('planner_scratchpad', scratchpad);
-  }, [scratchpad]);
+  useShortcuts({
+    onAdd: focusCurrentAddInput,
+    onHelp: () => setIsShortcutsOpen(true),
+    onPomodoroToggle: pomodoro.toggle,
+  });
 
   useEffect(() => {
     setActiveTabId(''); // Reset tab selection when planner ID changes
@@ -1104,18 +1299,31 @@ export default function PlannerApp() {
       document.exitFullscreen();
     }
   };
+
+  const handleSidebarDateSelect = (dateKey: string) => {
+    setSelectedDate(new Date(`${dateKey}T00:00:00`));
+
+    const monthlyTab = config.tabs.find((tab: any) => tab.component === MonthlyCalendarView);
+    const dailyTab = config.tabs.find((tab: any) => tab.component === DailyScheduleView);
+    const targetTab = monthlyTab || dailyTab;
+
+    if (targetTab) {
+      setActiveTabId(targetTab.id);
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('planner:open-date', { detail: { date: dateKey } }));
+      }, 50);
+    }
+  };
   
   if (!user) return <Navigate to="/login" replace />;
-  if (!id || !purchasedIds.includes(id)) return <Navigate to="/dashboard" replace />;
-
-  const product = PRODUCTS.find(p => p.id === id);
+  
+  // LOGIC: Access granted if user owns the specific ID OR has the 'pro' subscription
+  const hasAccess = purchasedIds.includes(id || '') || purchasedIds.includes('pro');
+  
+  if (!id || !hasAccess) {
+    return <Navigate to="/dashboard" replace />;
+  }
   if (!product) return <Navigate to="/dashboard" replace />;
-
-  // Resolve Template
-  const config = PLANNER_CONFIGS[id] || PLANNER_CONFIGS['adhd-planner-2026'];
-  const currentTabId = activeTabId || config.tabs[0].id;
-  const activeTabConfig = config.tabs.find((t: any) => t.id === currentTabId) || config.tabs[0];
-  const ActiveComponent = activeTabConfig.component;
 
   return (
     <div className="flex flex-col md:flex-row h-full w-full relative">
@@ -1153,39 +1361,12 @@ export default function PlannerApp() {
           </div>
 
           {/* Useful Widgets */}
-          <div className="px-6 py-6 space-y-6 flex-1 flex flex-col overflow-hidden">
+          <div className="px-6 py-5 space-y-4 flex-1 flex flex-col min-h-0">
             
-            {/* Quick Calendar Widget */}
-            <div className="bg-paper border border-line rounded-xl p-4 shadow-sm shrink-0">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-[10px] uppercase font-bold tracking-widest text-ink/70">Este Mês</h4>
-                <Calendar size={14} className="text-accent" />
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                {['D','S','T','Q','Q','S','S'].map((d, i) => (
-                  <div key={i} className="text-[8px] font-bold text-ink/40">{d}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {/* Simplified Calendar Grid for visual purpose */}
-                {[...Array(30)].map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={cn(
-                      "text-xs py-1 rounded-md flex items-center justify-center font-serif text-sm",
-                      i + 1 === new Date().getDate() 
-                        ? "bg-accent text-white font-bold shadow-sm" 
-                        : "text-ink/70 hover:bg-line/30 cursor-pointer"
-                    )}
-                  >
-                    {i + 1}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <SidebarCalendar selectedDate={selectedDate} onSelectDate={handleSidebarDateSelect} />
 
             {/* Scratchpad (Quick Notes) */}
-            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[150px]">
+            <div className={cn("bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[180px]", isScratchpadSyncing && "opacity-70")}>
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent">Scratchpad</h4>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent/60"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
@@ -1203,12 +1384,16 @@ export default function PlannerApp() {
           {/* Footer Promo */}
           <div className="p-6 pt-0 mt-auto">
             {!purchasedIds.includes('pro') && (
-              <div className="p-5 bg-ink text-paper rounded-xl shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-[30px] -mr-10 -mt-10 group-hover:bg-accent/40 transition-colors duration-700"></div>
-                <p className="text-[10px] uppercase font-bold tracking-widest mb-2 opacity-60">{t('unlock_pro_title')}</p>
-                <h4 className="text-sm font-bold leading-snug mb-4">{t('unlock_pro_desc')}</h4>
-                <Link to="/checkout/pro" className="w-full py-2.5 bg-paper/10 hover:bg-accent hover:text-white border border-paper/20 text-paper rounded text-[10px] font-bold uppercase tracking-widest block text-center transition-all backdrop-blur-md">
-                   {t('unlock_pro_btn')}
+              <div className="bg-paper border border-line rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+                  <Sparkles size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[9px] uppercase font-bold tracking-widest text-ink/45 truncate">{t('unlock_pro_title')}</p>
+                  <p className="text-xs text-ink/70 truncate">{t('unlock_pro_desc')}</p>
+                </div>
+                <Link to="/checkout/pro" className="shrink-0 px-3 py-2 bg-accent text-white rounded-lg text-[9px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity">
+                  {t('unlock_pro_btn')}
                 </Link>
               </div>
             )}
@@ -1240,14 +1425,45 @@ export default function PlannerApp() {
                 <div key={i} className="w-8 h-2.5 bg-gradient-to-b from-gray-300 via-gray-100 to-gray-400 dark:from-gray-600 dark:via-gray-400 dark:to-gray-700 rounded-full shadow-sm -ml-4 border border-gray-400/20 dark:border-black/50" />
               ))}
             </div>
+
+            <div className="absolute top-4 right-4 z-50 flex items-center gap-2 print:hidden">
+              <ProgressWidget {...dailyProgress} />
+              <PomodoroBar
+                formattedTime={pomodoro.formattedTime}
+                isActive={pomodoro.isActive}
+                isSoundActive={pomodoro.isSoundActive}
+                onToggle={pomodoro.toggle}
+                onReset={pomodoro.reset}
+                onToggleSound={pomodoro.toggleSound}
+              />
+              <button
+                type="button"
+                onClick={() => setIsShortcutsOpen(true)}
+                title={t('shortcuts_title')}
+                className="hidden sm:flex w-10 h-10 rounded-full bg-paper/90 backdrop-blur border border-line shadow-lg dark:shadow-none items-center justify-center text-ink hover:text-accent transition-colors"
+              >
+                ?
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                title={t('print_planner')}
+                className="hidden sm:flex w-10 h-10 rounded-full bg-paper/90 backdrop-blur border border-line shadow-lg dark:shadow-none items-center justify-center text-ink hover:text-accent transition-colors"
+              >
+                <Printer size={16} />
+              </button>
+            </div>
             
             <div 
-              className="flex-1 p-6 sm:p-10 md:p-16 pl-12 sm:pl-20 md:pl-24 overflow-auto relative transition-colors duration-500"
+              className={cn(
+                "flex-1 p-6 sm:p-10 md:p-16 pl-12 sm:pl-20 md:pl-24 pt-24 sm:pt-28 overflow-auto relative transition-colors duration-500"
+              )}
               style={{ backgroundImage: 'radial-gradient(var(--border-line) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
             >
               <ActiveComponent 
                 plannerId={id} 
                 userId={user.id} 
+                selectedDate={selectedDate}
                 {...activeTabConfig.props} 
               />
             </div>
@@ -1308,7 +1524,7 @@ export default function PlannerApp() {
                       "text-[10px] font-bold uppercase tracking-[0.2em] font-sans",
                       isActive ? "text-ink" : "text-black/60 dark:text-ink/60"
                     )}>
-                      {tab.label}
+                      {t(tab.label)}
                     </span>
                   </div>
                   
@@ -1346,6 +1562,7 @@ export default function PlannerApp() {
           </div>
         </div>
       </main>
+      <ShortcutsHelp isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
     </div>
   );
 }

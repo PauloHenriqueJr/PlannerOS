@@ -24,13 +24,13 @@
 }
 
 .dark {
-  --bg-paper: #1A1918;
-  --text-ink: #EAE6E1;
-  --border-line: #33312E;
-  --brand-accent: #C4A88B;
-  --bg-sidebar: #1E1D1B;
-  --bg-canvas: #141312;
-  --bg-tab: #2A2825;
+  --bg-paper: #1C1B1A;
+  --text-ink: #E8E1D9;
+  --border-line: #383431;
+  --brand-accent: #D4B895;
+  --bg-sidebar: #242220;
+  --bg-canvas: #161514;
+  --bg-tab: #2D2B29;
 }
 
 body {

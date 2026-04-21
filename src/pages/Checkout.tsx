@@ -81,7 +81,7 @@ export default function Checkout() {
 
         <div className="flex flex-col md:flex-row gap-8">
           {/* Form */}
-          <div className="flex-1 bg-white p-8 rounded-2xl border border-line shadow-sm h-fit">
+          <div className="flex-1 bg-sidebar p-8 rounded-2xl border border-line shadow-sm h-fit">
             <h3 className="font-serif font-bold text-xl mb-6">{t('payment_method')}</h3>
             
             <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
@@ -92,18 +92,16 @@ export default function Checkout() {
                  </svg>
               </div>
               <h4 className="font-bold text-ink">
-                {isPt ? 'Pagamento Seguro via Stripe' : 'Secure Payment via Stripe'}
+                {t('secure_payment')}
               </h4>
               <p className="text-sm opacity-60 max-w-sm">
-                {isPt 
-                  ? 'Você será redirecionado para o ambiente seguro da Stripe para concluir sua compra com Cartão de Crédito ou PIX.' 
-                  : 'You will be redirected to Stripe\'s secure environment to complete your purchase using Credit Card or Apple Pay.'}
+                {t('secure_payment_desc')}
               </p>
             </div>
 
             {error && (
               <div className="mt-4 p-4 text-xs font-bold text-red-600 bg-red-50 rounded">
-                Erro: {error}
+                {t('error')} {error}
               </div>
             )}
 
@@ -112,18 +110,18 @@ export default function Checkout() {
               disabled={loading}
               className="mt-8 w-full bg-accent text-white font-bold tracking-widest uppercase text-xs py-4 rounded hover:opacity-90 transition-opacity disabled:opacity-50"
             >
-              {loading ? 'Processing...' : t('pay_now')}
+              {loading ? t('processing') : t('pay_now')}
             </button>
 
             <p className="mt-6 text-[10px] leading-relaxed text-center opacity-40 bg-accent/5 p-3 rounded">
-               {isPt ? 'Este é o último passo antes de liberar seu acesso na plataforma.' : 'This is the final step before granting you platform access.'}
+               {t('final_step_desc')}
             </p>
 
           </div>
 
           {/* Summary Sidebar */}
           <div className="w-full md:w-80 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-line shadow-sm">
+            <div className="bg-sidebar p-6 rounded-2xl border border-line shadow-sm">
                 <h3 className="font-serif font-bold text-xl mb-6 pb-4 border-b border-line">{t('order_summary')}</h3>
                 
                 <div className="flex items-start justify-between mb-8">
@@ -145,9 +143,9 @@ export default function Checkout() {
                 </div>
             </div>
             
-            <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-line flex items-center gap-3">
+            <div className="bg-sidebar/50 backdrop-blur-sm p-4 rounded-xl border border-line flex items-center gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent flex-shrink-0"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              <p className="text-[10px] font-bold tracking-widest uppercase opacity-50">SSL ENCRYPTED SECURE PAYMENT PORTAL</p>
+              <p className="text-[10px] font-bold tracking-widest uppercase opacity-50">{t('ssl_secured')}</p>
             </div>
           </div>
         </div>

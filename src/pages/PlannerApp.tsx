@@ -15,7 +15,7 @@ import {
 } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
-import { Moon, Sun, Printer } from 'lucide-react';
+import { Moon, Sun, Printer, Maximize, Minimize, Play, Pause, RotateCcw, Headphones, Mic, MicOff, Brain, Coffee, Sparkles, Smile, ListChecks, Calendar, Receipt, Briefcase, BookHeart } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -50,12 +50,155 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
 
   const completedCount = tasks.filter((t: Task) => t.completed).length;
 
+  // --- Pomodoro Logic ---
+  const [pomoTime, setPomoTime] = useState(25 * 60);
+  const [pomoActive, setPomoActive] = useState(false);
+  const [soundActive, setSoundActive] = useState(false);
+
+  const audioCtxRef = React.useRef<AudioContext | null>(null);
+  const audioSourceRef = React.useRef<AudioBufferSourceNode | null>(null);
+
+  const toggleSound = () => {
+    if (soundActive) {
+      if (audioSourceRef.current) {
+        audioSourceRef.current.stop();
+        audioSourceRef.current.disconnect();
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+      }
+      setSoundActive(false);
+      return;
+    }
+
+    try {
+      const AudioCtxConstructor = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioCtxConstructor();
+      audioCtxRef.current = ctx;
+
+      const bufferSize = ctx.sampleRate * 2; 
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          data[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = data[i];
+          data[i] *= 3.5; 
+      }
+
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = buffer;
+      noiseSource.loop = true;
+      audioSourceRef.current = noiseSource;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 400; 
+
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.5; 
+
+      noiseSource.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      noiseSource.start();
+      setSoundActive(true);
+    } catch (e) {
+      console.warn("Áudio não suportado", e);
+    }
+  };
+
+  useEffect(() => {
+    let interval: any;
+    if (pomoActive && pomoTime > 0) {
+      interval = setInterval(() => setPomoTime(t => t - 1), 1000);
+    } else if (pomoTime === 0) {
+      setPomoActive(false);
+      // Pomo finished!
+    }
+    return () => clearInterval(interval);
+  }, [pomoActive, pomoTime]);
+
+  const togglePomo = () => {
+    if (!pomoActive && !document.fullscreenElement) {
+       document.documentElement.requestFullscreen().catch(() => {});
+    }
+    setPomoActive(!pomoActive);
+  };
+  const resetPomo = () => {
+    setPomoActive(false);
+    setPomoTime(25 * 60);
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60).toString().padStart(2, '0');
+    const s = (secs % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  // --- Voice to Task Logic ---
+  const [isListening, setIsListening] = useState(false);
+  const toggleVoice = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Seu navegador não suporta digitação por voz.");
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'pt-BR';
+    recognition.interimResults = false;
+    
+    if (isListening) {
+      recognition.stop();
+      setIsListening(false);
+      return;
+    }
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setNewTask(prev => prev + (prev.length > 0 ? " " : "") + transcript);
+      setIsListening(false);
+    };
+    recognition.onerror = (event: any) => {
+      console.warn("SpeechRec error:", event.error);
+      setIsListening(false);
+    };
+    recognition.onend = () => setIsListening(false);
+    
+    recognition.start();
+  };
+
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-8 md:mb-10 gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
-          <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • {t(subtitle)}</p>
+        <div className="flex items-center gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-serif italic text-ink">{t(title)}</h1>
+            <p className="text-xs md:text-sm opacity-50">{format(new Date(), 'EEEE, MMMM do')} • {t(subtitle)}</p>
+          </div>
+          
+          {/* Pomodoro Pill */}
+          <div className="hidden sm:flex items-center gap-3 bg-sidebar border border-line rounded-full px-4 py-2 shadow-sm">
+             <div className="font-serif italic font-bold text-accent text-lg w-14 text-center">
+               {formatTime(pomoTime)}
+             </div>
+             <div className="h-4 w-[1px] bg-line"></div>
+             <button onClick={togglePomo} className="text-ink hover:text-accent transition-colors" title="Iniciar/Pausar Foco">
+                {pomoActive ? <Pause size={16} /> : <Play size={16} />}
+             </button>
+             <button onClick={resetPomo} className="text-ink hover:text-accent transition-colors" title="Resetar Timer">
+                <RotateCcw size={16} />
+             </button>
+             <button onClick={toggleSound} className={cn("transition-colors ml-1", soundActive ? "text-accent animate-pulse" : "text-ink/40 hover:text-ink")} title="Ruído Marrom">
+                <Headphones size={16} />
+             </button>
+          </div>
         </div>
         <div className="flex space-x-2 print:hidden">
           <button onClick={() => document.documentElement.classList.toggle('dark')} title={t('dark_mode')} className="w-8 h-8 md:w-10 md:h-10 rounded-full border border-line flex items-center justify-center text-ink hover:bg-sidebar transition-colors">
@@ -81,6 +224,9 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, initialTa
                 placeholder={t('task_placeholder')}
                 className="flex-1 w-full border-b border-line bg-transparent pb-2 text-sm font-sans focus:outline-none focus:border-accent transition-colors placeholder:opacity-40"
               />
+              <button type="button" onClick={toggleVoice} className={cn("px-2 hover:opacity-70 transition-colors", isListening ? "text-red-500 animate-pulse" : "text-ink")} title="Despejo por Voz">
+                {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+              </button>
               <button type="submit" className="text-[10px] uppercase tracking-widest font-bold text-accent hover:opacity-70 px-2">
                 {t('add_btn')}
               </button>
@@ -433,7 +579,7 @@ function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix
             const dayKey = format(day, 'yyyy-MM-dd');
             const isToday = isSameDay(day, new Date());
             return (
-              <div key={dayKey} className={cn("bg-white p-2 flex flex-col h-full min-h-[80px] hover:bg-sidebar/50 transition-colors", isToday && "bg-accent/5")}>
+              <div key={dayKey} className={cn("bg-sidebar p-2 flex flex-col h-full min-h-[80px] hover:bg-sidebar/50 transition-colors", isToday && "bg-accent/5")}>
                 <span className={cn("text-xs font-serif italic mb-1", isToday ? "font-bold text-accent" : "text-ink opacity-50")}>{format(day, 'd')}</span>
                 <textarea 
                   value={notes[dayKey] || ''}
@@ -585,7 +731,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
           </div>
           <div className="flex flex-col gap-3">
             {DAYS.map(day => (
-              <div key={day} className="grid grid-cols-5 gap-2 sm:gap-4 items-center group bg-white/50 p-2 rounded-lg border border-transparent hover:border-line transition-colors">
+              <div key={day} className="grid grid-cols-5 gap-2 sm:gap-4 items-center group bg-sidebar/50 p-2 rounded-lg border border-transparent hover:border-line transition-colors">
                 <div className="text-sm font-serif font-bold italic opacity-70 group-hover:opacity-100 pl-2 text-ink">{day}</div>
                 {MEALS.map(meal => (
                   <input
@@ -593,7 +739,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix }: a
                     value={meals[day]?.[meal] || ''}
                     onChange={e => handleChange(day, meal, e.target.value)}
                     placeholder="..."
-                    className="w-full bg-white border border-transparent hover:border-line focus:border-accent text-xs sm:text-sm px-2 py-2 sm:py-1.5 rounded transition-all focus:outline-none focus:shadow-sm text-ink font-sans placeholder:opacity-30"
+                    className="w-full bg-sidebar border border-transparent hover:border-line focus:border-accent text-xs sm:text-sm px-2 py-2 sm:py-1.5 rounded transition-all focus:outline-none focus:shadow-sm text-ink font-sans placeholder:opacity-30"
                   />
                 ))}
               </div>
@@ -761,138 +907,32 @@ const PLANNER_CONFIGS: Record<string, any> = {
   'adhd-planner-2026': {
     bundleName: 'bundle_adhd',
     tabs: [
-      {
-        id: 'focus',
-        label: 'tab_focus',
-        component: TaskView,
-        props: {
-          title: "title_focus",
-          subtitle: "sub_focus",
-          storagePrefix: "tasks",
-          initialTasks: [
-            { id: 't1', text: 'task_dump', completed: false },
-            { id: 't2', text: 'task_water', completed: false },
-            { id: 't3', text: 'task_priority', completed: false }
-          ]
-        }
-      },
-      {
-        id: 'braindump',
-        label: 'tab_braindump',
-        component: TextAreaView,
-        props: {
-          title: "title_braindump",
-          subtitle: "sub_braindump",
-          storagePrefix: "braindump",
-          placeholder: "placeholder_bd"
-        }
-      },
-      {
-        id: 'habits',
-        label: 'tab_habits',
-        component: HabitsView,
-        props: {
-          title: "title_habits",
-          subtitle: "sub_habits",
-          storagePrefix: "habits",
-          initialHabits: [
-            { id: 'h1', name: 'habit_meds', days: {} },
-            { id: 'h2', name: 'habit_sun', days: {} }
-          ]
-        }
-      }
+      { id: 'focus', label: 'Foco de Hoje', icon: Brain, color: '#B8E1FF', component: TaskView, props: { title: "Foco Profundo", subtitle: "Prioridade #1", storagePrefix: "adhd_focus" } },
+      { id: 'dopamine', label: 'Dopamina', icon: Sparkles, color: '#FFFFCC', component: TaskView, props: { title: "Dopamine Menu", subtitle: "Recarregue as energias", storagePrefix: "adhd_dopamine" } },
+      { id: 'braindump', label: 'Brain Dump', icon: Coffee, color: '#FFF5E1', component: TextAreaView, props: { title: "Despejo Caótico", subtitle: "Limpeza de RAM mental", storagePrefix: "adhd_bd" } },
+      { id: 'projects', label: 'Projetos', icon: Briefcase, color: '#CCFFCC', component: TableDataView, props: { title: "Meus Projetos", subtitle: "Visão Geral", storagePrefix: "adhd_proj", columnHeaders: ["Projeto", "Status"] } },
+      { id: 'finances', label: 'Finanças', icon: Receipt, color: '#FFCCE5', component: TableDataView, props: { title: "Controle Financeiro", subtitle: "Entradas/Saídas", storagePrefix: "adhd_money", columnHeaders: ["Item", "Valor"] } },
+      { id: 'notes', label: 'Anotações', icon: ListChecks, color: '#E5CCFF', component: TextAreaView, props: { title: "Notas Rápidas", subtitle: "Idéias voláteis", storagePrefix: "adhd_notes" } }
     ]
   },
   'it-girl-wellness': {
     bundleName: 'bundle_wellness',
     tabs: [
-      {
-        id: 'routine',
-        label: 'tab_routine',
-        component: TaskView,
-        props: {
-          title: "title_routine",
-          subtitle: "sub_routine",
-          storagePrefix: "routine",
-          initialTasks: [
-            { id: 'w1', text: 'task_skin', completed: false },
-            { id: 'w2', text: 'task_meditate', completed: false },
-            { id: 'w3', text: 'task_guasha', completed: false }
-          ]
-        }
-      },
-      {
-        id: 'journal',
-        label: 'tab_journal',
-        component: TextAreaView,
-        props: {
-          title: "title_journal",
-          subtitle: "sub_journal",
-          storagePrefix: "journal",
-          placeholder: "placeholder_journal"
-        }
-      },
-      {
-        id: 'habits',
-        label: 'tab_selfcare',
-        component: HabitsView,
-        props: {
-          title: "title_selfcare",
-          subtitle: "sub_selfcare",
-          storagePrefix: "selfcare",
-          initialHabits: [
-            { id: 'h1', name: 'habit_water_2l', days: {} },
-            { id: 'h2', name: 'habit_read_10', days: {} },
-            { id: 'h3', name: 'habit_sleep_8', days: {} }
-          ]
-        }
-      }
+      { id: 'routine_am', label: 'Morning', icon: Sun, color: '#FFFFCC', component: TaskView, props: { title: "Rotina Matinal", subtitle: "Comece Radiante", storagePrefix: "well_am" } },
+      { id: 'routine_pm', label: 'Night', icon: Moon, color: '#B8E1FF', component: TaskView, props: { title: "Rotina Noturna", subtitle: "Desacelere", storagePrefix: "well_pm" } },
+      { id: 'journal', label: 'Journal', icon: BookHeart, color: '#E5CCFF', component: TextAreaView, props: { title: "Diário Mágico", subtitle: "Gratidão e Reflexão", storagePrefix: "well_journal" } },
+      { id: 'selfcare', label: 'Self-Care', icon: Sparkles, color: '#FFCCE5', component: TaskView, props: { title: "Checklist Autocuidado", subtitle: "Priorize-se", storagePrefix: "well_self" } },
+      { id: 'fitness', label: 'Fitness', icon: ListChecks, color: '#CCFFCC', component: HabitsView, props: { title: "Treino & Movimento", subtitle: "Atividade Física", storagePrefix: "well_fit" } },
+      { id: 'mood', label: 'Mood', icon: Smile, color: '#FFE5CC', component: HabitsView, props: { title: "Rastreador de Humor", subtitle: "Sentimentos", storagePrefix: "well_mood" } }
     ]
   },
   'small-business-os': {
     bundleName: 'bundle_creator',
     tabs: [
-      {
-        id: 'projects',
-        label: 'tab_projects',
-        component: TableDataView,
-        props: {
-          title: "title_projects",
-          subtitle: "sub_projects",
-          storagePrefix: "projects",
-          columnHeaders: ["col_project", "col_status"],
-          initialData: [
-            { id: 'p1', col1: 'proj_1', col2: 'stat_progress' },
-            { id: 'p2', col1: 'proj_2', col2: 'stat_pending' }
-          ]
-        }
-      },
-      {
-        id: 'finances',
-        label: 'tab_finances',
-        component: TableDataView,
-        props: {
-          title: "title_finances",
-          subtitle: "sub_finances",
-          storagePrefix: "finance",
-          columnHeaders: ["col_desc", "col_amount"],
-          initialData: [
-            { id: 'f1', col1: 'fin_1', col2: 'fin_val_1' },
-            { id: 'f2', col1: 'fin_2', col2: 'fin_val_2' }
-          ]
-        }
-      },
-      {
-        id: 'notes',
-        label: 'tab_ideas',
-        component: TextAreaView,
-        props: {
-          title: "title_ideas",
-          subtitle: "sub_ideas",
-          storagePrefix: "notes",
-          placeholder: "placeholder_ideas"
-        }
-      }
+      { id: 'kanban', label: 'Sprint', icon: Briefcase, color: '#94a3b8', component: TableDataView, props: { title: "Sprint Kanban", subtitle: "Tarefas do Negócio", storagePrefix: "biz_tasks", columnHeaders: ["Tarefa", "Status"] } },
+      { id: 'cashflow', label: 'Fluxo', icon: Receipt, color: '#10b981', component: TableDataView, props: { title: "Fluxo de Caixa", subtitle: "Financeiro", storagePrefix: "biz_cash", columnHeaders: ["Descrição", "Valor"] } },
+      { id: 'clients', label: 'Clientes', icon: Briefcase, color: '#6366f1', component: TableDataView, props: { title: "CRM / Clientes", subtitle: "Contatos e Status", storagePrefix: "biz_crm", columnHeaders: ["Nome", "Status"] } },
+      { id: 'brainstorm', label: 'Lançamentos', icon: Sparkles, color: '#0ea5e9', component: TextAreaView, props: { title: "Brainstorm Estratégico", subtitle: "Novos Produtos", storagePrefix: "biz_launch" } }
     ]
   },
   'undated-digital-planner': {
@@ -1036,10 +1076,29 @@ export default function PlannerApp() {
   const { t } = useTranslation();
   
   const [activeTabId, setActiveTabId] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     setActiveTabId(''); // Reset tab selection when planner ID changes
   }, [id]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
   
   if (!user) return <Navigate to="/login" replace />;
   if (!id || !purchasedIds.includes(id)) return <Navigate to="/dashboard" replace />;
@@ -1054,74 +1113,234 @@ export default function PlannerApp() {
   const ActiveComponent = activeTabConfig.component;
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full">
+    <div className="flex flex-col md:flex-row h-full w-full relative">
       {/* Mobile Topbar */}
-      <div className="md:hidden flex items-center justify-between p-4 border-b border-line bg-white shrink-0 shadow-sm z-10">
-        <Link to="/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1">
-          &larr; {t('back_library')}
-        </Link>
-        <span className="font-serif italic font-bold text-sm truncate max-w-[200px]">{t(product.nameKey)}</span>
-      </div>
+      {!isFullscreen && (
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-line bg-sidebar shrink-0 shadow-sm z-10">
+          <Link to="/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1">
+            &larr; {t('back_library')}
+          </Link>
+          <span className="font-serif italic font-bold text-sm truncate max-w-[200px]">{t(product.nameKey)}</span>
+        </div>
+      )}
 
       {/* Sidebar Navigator */}
-      <aside className="hidden md:flex w-64 border-r border-line bg-sidebar p-6 flex-col shrink-0 overflow-y-auto">
-        <div className="mb-8">
-          <ul className="space-y-3">
-            <li className="flex items-center p-2 text-sm opacity-60 hover:opacity-100 transition-all cursor-pointer group">
-               <Link to="/dashboard" className="flex items-center w-full">
-                 <span className="w-6 h-6 rounded border border-line flex items-center justify-center mr-3 shrink-0 group-hover:bg-white transition-colors">
-                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                 </span>
-                 {t('back_library')}
-               </Link>
-            </li>
-            <li className="flex items-center p-2 bg-white rounded-lg border border-line text-sm font-bold shadow-sm mt-4">
-              <span className="w-2 h-2 rounded-full bg-accent mr-3 shrink-0 animate-pulse"></span>
-              <span className="truncate">{t(product.nameKey)}</span>
-            </li>
-          </ul>
-        </div>
-
-        <div className="mt-auto">
-          {!purchasedIds.includes('pro') && (
-            <div className="p-5 bg-ink text-white rounded-xl shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-[30px] -mr-10 -mt-10 group-hover:bg-accent/40 transition-colors duration-700"></div>
-              <p className="text-[10px] uppercase font-bold tracking-widest mb-2 opacity-60">{t('unlock_pro_title')}</p>
-              <h4 className="text-sm font-bold leading-snug mb-4">{t('unlock_pro_desc')}</h4>
-              <Link to="/checkout/pro" className="w-full py-2.5 bg-white/10 hover:bg-accent border border-white/20 text-white rounded text-[10px] font-bold uppercase tracking-widest block text-center transition-all backdrop-blur-md">
-                 {t('unlock_pro_btn')}
-              </Link>
+      {!isFullscreen && (
+        <aside className="hidden md:flex w-72 border-r border-line bg-sidebar flex-col shrink-0 overflow-y-auto">
+          {/* Header */}
+          <div className="p-6 pb-2">
+            <Link to="/dashboard" className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-ink/50 hover:text-accent transition-colors mb-6 group">
+              <span className="w-5 h-5 rounded border border-line flex items-center justify-center mr-2 group-hover:bg-paper transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </span>
+              {t('back_library')}
+            </Link>
+            
+            <div className="flex bg-paper border border-line rounded-xl p-3 items-center shadow-sm">
+              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent mr-3 border border-accent/20">
+                <BookHeart size={20} strokeWidth={1.5} />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <p className="text-[10px] uppercase font-bold tracking-widest text-ink/50">Planner Atual</p>
+                <h3 className="font-serif italic font-bold text-base truncate text-ink">{t(product.nameKey)}</h3>
+              </div>
             </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Planner Canvas */}
-      <main className="flex-1 p-0 sm:p-6 md:p-10 flex flex-col items-center bg-canvas h-[calc(100vh-3.5rem)] md:h-full overflow-hidden">
-        <div className="w-full max-w-5xl bg-white sm:rounded-xl md:rounded-[2rem] shadow-xl md:shadow-2xl h-full flex flex-col md:flex-row overflow-hidden border border-white/20">
-          
-          {/* Tabs Side */}
-          <div className="w-full md:w-16 bg-tab flex flex-row md:flex-col pt-0 md:pt-12 space-y-0 md:space-y-2 shrink-0 overflow-x-auto overflow-y-hidden border-b md:border-b-0 border-line/20">
-            {config.tabs.map((tab: any) => (
-              <button 
-                key={tab.id}
-                onClick={() => setActiveTabId(tab.id)}
-                className={cn(
-                  "flex-1 md:flex-none py-4 md:py-0 md:h-32 w-auto md:w-16 md:rounded-l-lg md:-mr-1 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest transition-all px-6 md:px-0 md:[writing-mode:vertical-lr]",
-                  currentTabId === tab.id ? "bg-white text-ink border-b-2 md:border-b-0 border-accent md:border-transparent z-10 shadow-[-4px_0_15px_-5px_rgba(0,0,0,0.05)]" : "opacity-60 text-ink/80 hover:bg-white/50"
-                )}
-              >
-                {t(tab.label)}
-              </button>
-            ))}
           </div>
 
-          <div className="flex-1 p-4 sm:p-8 md:p-12 overflow-auto relative flex flex-col h-full">
-            <ActiveComponent 
-              plannerId={id} 
-              userId={user.id} 
-              {...activeTabConfig.props} 
-            />
+          {/* Useful Widgets */}
+          <div className="px-6 py-6 space-y-6 flex-1">
+            
+            {/* Quick Calendar Widget */}
+            <div className="bg-paper border border-line rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-ink/70">Este Mês</h4>
+                <Calendar size={14} className="text-accent" />
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['D','S','T','Q','Q','S','S'].map((d, i) => (
+                  <div key={i} className="text-[9px] font-bold text-ink/40">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {/* Simplified Calendar Grid for visual purpose */}
+                {[...Array(30)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "text-xs py-1 rounded-md flex items-center justify-center",
+                      i + 1 === new Date().getDate() 
+                        ? "bg-accent text-white font-bold shadow-sm" 
+                        : "text-ink/70 hover:bg-line/30 cursor-pointer"
+                    )}
+                  >
+                    {i + 1}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Daily Quotes / Focus Widget */}
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 relative overflow-hidden">
+              <Sparkles size={60} className="absolute -bottom-4 -right-4 text-accent/10 rotate-12" />
+              <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent mb-2">Mensagem do Dia</h4>
+              <p className="font-serif italic text-sm text-ink/80 leading-relaxed relative z-10">
+                "Uma pequena vitória ainda é uma vitória. Celebre o progresso feito hoje."
+              </p>
+            </div>
+            
+          </div>
+  
+          {/* Footer Promo */}
+          <div className="p-6 pt-0 mt-auto">
+            {!purchasedIds.includes('pro') && (
+              <div className="p-5 bg-ink text-paper rounded-xl shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-accent/20 rounded-full blur-[30px] -mr-10 -mt-10 group-hover:bg-accent/40 transition-colors duration-700"></div>
+                <p className="text-[10px] uppercase font-bold tracking-widest mb-2 opacity-60">{t('unlock_pro_title')}</p>
+                <h4 className="text-sm font-bold leading-snug mb-4">{t('unlock_pro_desc')}</h4>
+                <Link to="/checkout/pro" className="w-full py-2.5 bg-paper/10 hover:bg-accent hover:text-white border border-paper/20 text-paper rounded text-[10px] font-bold uppercase tracking-widest block text-center transition-all backdrop-blur-md">
+                   {t('unlock_pro_btn')}
+                </Link>
+              </div>
+            )}
+          </div>
+        </aside>
+      )}
+
+      {/* Main Planner Canvas */}
+      <main className={cn(
+        "flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-4 md:p-8 transition-colors duration-500",
+        isFullscreen ? "p-0 h-screen w-screen" : "h-[calc(100vh-3.5rem)] md:h-full"
+      )}>
+        <div className={cn(
+          "w-full h-full flex flex-row relative",
+          isFullscreen ? "max-w-none" : "max-w-6xl"
+        )}>
+          
+          {/* Main Paper / Content */}
+          <div className={cn(
+            "flex-1 bg-paper shadow-2xl dark:shadow-none dark:border dark:border-line relative flex flex-col overflow-hidden z-20 transition-colors duration-500",
+            isFullscreen ? "rounded-none" : "rounded-lg sm:rounded-2xl"
+          )}>
+            {/* Binder Spine & Rings Effect */}
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black/5 dark:from-black/40 to-transparent pointer-events-none z-30" />
+            
+            {/* Physical Rings */}
+            <div className="absolute left-1 top-0 bottom-0 w-6 flex flex-col justify-around py-12 z-40 pointer-events-none opacity-80 dark:opacity-40 mix-blend-multiply dark:mix-blend-normal">
+              {[...Array(12)].map((_, i) => (
+                <div key={i} className="w-8 h-2.5 bg-gradient-to-b from-gray-300 via-gray-100 to-gray-400 dark:from-gray-600 dark:via-gray-400 dark:to-gray-700 rounded-full shadow-sm -ml-4 border border-gray-400/20 dark:border-black/50" />
+              ))}
+            </div>
+            
+            <div 
+              className="flex-1 p-6 sm:p-10 md:p-16 pl-12 sm:pl-20 md:pl-24 overflow-auto relative transition-colors duration-500"
+              style={{ backgroundImage: 'radial-gradient(var(--border-line) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
+            >
+              <ActiveComponent 
+                plannerId={id} 
+                userId={user.id} 
+                {...activeTabConfig.props} 
+              />
+            </div>
+
+            {/* Floating Fullscreen Toggle - Internal */}
+            <button 
+              onClick={toggleFullscreen} 
+              className="absolute bottom-6 left-6 z-50 w-10 h-10 rounded-full bg-paper/80 backdrop-blur border border-line shadow-lg dark:shadow-none flex items-center justify-center text-ink cursor-pointer hover:bg-accent/10 hover:text-accent transition-all"
+            >
+              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+            </button>
+          </div>
+
+          {/* Physical Right-Side Tabs */}
+          <div className="hidden md:flex flex-col pt-12 space-y-px shrink-0 z-10 -ml-px">
+            {config.tabs.map((tab: any, idx: number) => {
+              const Icon = tab.icon || ListChecks;
+              const isActive = currentTabId === tab.id;
+              
+              return (
+                <button 
+                  key={tab.id}
+                  onClick={() => setActiveTabId(tab.id)}
+                  className={cn(
+                    "relative py-8 w-12 rounded-r-xl flex items-center justify-center transition-all duration-300 ease-in-out hover:pl-2 group overflow-hidden border-y border-r",
+                    isActive 
+                      ? "z-30 w-16 shadow-[-5px_0_15px_rgba(0,0,0,0.15)] dark:shadow-none translate-x-0 border-line" 
+                      : "z-0 opacity-90 hover:opacity-100 border-line/40 dark:border-line/20"
+                  )}
+                  style={{ 
+                    marginTop: idx === 0 ? '0' : '-8px',
+                    backgroundColor: isActive ? 'var(--bg-paper)' : (tab.color || 'var(--bg-tab)')
+                  }}
+                >
+                  {/* Layer to force coloring in light mode exactly as tab.color, but using paper in active */}
+                  {!isActive && (
+                    <div 
+                      className="absolute inset-0 z-0 dark:opacity-10" 
+                      style={{ backgroundColor: tab.color || 'var(--bg-tab)' }} 
+                    />
+                  )}
+
+                  {/* Active tab colored subtle left-edge (dark mode glow) */}
+                  {isActive && (
+                    <div 
+                      className="absolute inset-0 opacity-10 dark:opacity-20 z-0 pointer-events-none"
+                      style={{ backgroundColor: tab.color || 'var(--brand-accent)' }}
+                    />
+                  )}
+                  
+                  {/* Dark Mode Glow Border overlay */}
+                  <div 
+                    className={cn(
+                      "absolute inset-0 opacity-0 transition-opacity border-r-2 z-0",
+                      isActive ? "dark:opacity-100" : "dark:opacity-30 group-hover:dark:opacity-60"
+                    )}
+                    style={{ borderColor: tab.color || 'transparent' }}
+                  />
+                  
+                  <div className="relative z-10 flex flex-col items-center gap-4 [writing-mode:vertical-rl] whitespace-nowrap">
+                    <Icon size={18} strokeWidth={2} className={cn(
+                      "rotate-90 mb-2 transition-colors",
+                      isActive ? "text-ink dark:text-ink/90" : "text-black/60 dark:text-ink/50"
+                    )} />
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-[0.2em] font-sans",
+                      isActive ? "text-ink dark:text-ink/90" : "text-black/60 dark:text-ink/50"
+                    )}>
+                      {tab.label}
+                    </span>
+                  </div>
+                  
+                  {/* Connector to merge tab with paper smoothly */}
+                  {isActive && (
+                    <div 
+                      className="absolute top-0 right-full bottom-0 w-[4px] z-40 translate-x-[2px]"
+                      style={{ backgroundColor: 'var(--bg-paper)' }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Mobile Navigation (Floating Bottom Bar) */}
+          <div className="md:hidden fixed bottom-6 left-4 right-4 z-[100] bg-paper/90 backdrop-blur-xl border border-line shadow-2xl dark:shadow-none rounded-2xl flex items-center justify-around p-2 overflow-x-auto no-scrollbar">
+            {config.tabs.map((tab: any) => {
+              const Icon = tab.icon || ListChecks;
+              const isActive = currentTabId === tab.id;
+              return (
+                <button 
+                  key={tab.id}
+                  onClick={() => setActiveTabId(tab.id)}
+                  className={cn(
+                    "p-3 rounded-xl transition-all",
+                    isActive ? "scale-110 shadow-lg dark:shadow-none dark:opacity-90" : "text-ink/40 hover:bg-line/20"
+                  )}
+                  style={isActive ? { backgroundColor: tab.color || 'var(--brand-accent)', color: '#1C1B1A' } : {}}
+                >
+                  <Icon size={20} />
+                </button>
+              );
+            })}
           </div>
         </div>
       </main>

@@ -8,6 +8,13 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
 
+interface ThemeContextType {
+  isDark: boolean;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType>({} as ThemeContextType);
+
 export interface PlannerProduct {
   id: string;
   nameKey: string;
@@ -102,6 +109,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [purchasedIds, setPurchasedIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(prev => !prev);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
@@ -175,13 +203,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
-        <PurchasesContext.Provider value={{ purchasedIds, buyPlanner }}>
-            {children}
-        </PurchasesContext.Provider>
-    </AuthContext.Provider>
+    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+      <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+          <PurchasesContext.Provider value={{ purchasedIds, buyPlanner }}>
+              {children}
+          </PurchasesContext.Provider>
+      </AuthContext.Provider>
+    </ThemeContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
 export const usePurchases = () => useContext(PurchasesContext);
+export const useTheme = () => useContext(ThemeContext);

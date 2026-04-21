@@ -22,7 +22,7 @@ export default function Dashboard() {
            <h1 className="font-serif text-4xl md:text-5xl italic text-ink">{t('welcome_back', { name: user.name })}</h1>
         </div>
         {purchasedProducts.length > 0 && (
-          <div className="bg-white px-4 py-2 rounded-lg border border-line shadow-sm flex items-center gap-3">
+          <div className="bg-sidebar px-4 py-2 rounded-lg border border-line shadow-sm flex items-center gap-3">
              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
              <span className="text-[10px] uppercase tracking-widest font-bold opacity-60">
                {purchasedProducts.length} {t('owned')}
@@ -32,7 +32,7 @@ export default function Dashboard() {
       </div>
 
       {purchasedProducts.length === 0 ? (
-        <div className="relative overflow-hidden text-center py-24 md:py-32 px-4 bg-white rounded-[2rem] border border-line shadow-2xl group">
+        <div className="relative overflow-hidden text-center py-24 md:py-32 px-4 bg-sidebar rounded-[2rem] border border-line shadow-2xl group">
           <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-sidebar to-transparent opacity-50"></div>
           <div className="relative z-10 max-w-lg mx-auto">
              <div className="w-20 h-20 bg-sidebar border border-line rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-500">
@@ -40,7 +40,7 @@ export default function Dashboard() {
              </div>
              <h2 className="font-serif text-3xl font-bold mb-4">{t('no_planners')}</h2>
              <p className="text-ink opacity-60 mb-10 leading-relaxed">
-               Sua biblioteca está vazia no momento. Explore nossa loja e encontre o sistema perfeito para organizar sua vida hoje mesmo.
+               {t('no_planners_desc')}
              </p>
              <Link 
                to="/"
@@ -56,7 +56,7 @@ export default function Dashboard() {
             <Link 
               key={product.id}
               to={`/planner/${product.id}`}
-              className="group bg-white rounded-2xl border border-line p-5 hover:shadow-2xl hover:shadow-accent/5 hover:border-accent transition-all duration-500 flex flex-col focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+              className="group bg-sidebar rounded-2xl border border-line p-5 hover:shadow-2xl hover:shadow-accent/5 hover:border-accent transition-all duration-500 flex flex-col focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
             >
               <div className="aspect-[4/3] bg-sidebar rounded-xl mb-6 overflow-hidden relative border border-line/50">
                 <img 
@@ -87,7 +87,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-10">
                <div>
                  <h3 className="font-serif text-2xl md:text-3xl font-bold italic mb-2">{t('exclusive_access')}</h3>
-                 <p className="opacity-60 text-sm">Baseado no seu perfil, você também pode gostar desses sistemas.</p>
+                 <p className="opacity-60 text-sm">{t('exclusive_access_desc')}</p>
                </div>
                <Link to="/" className="hidden md:inline-flex text-[10px] uppercase font-bold tracking-widest border border-line px-5 py-2.5 rounded hover:bg-sidebar transition-colors">
                   {t('store_link')}
@@ -96,7 +96,7 @@ export default function Dashboard() {
             
             <div className="grid sm:grid-cols-3 gap-6">
                {unpurchasedProducts.map(p => (
-                  <Link key={p.id} to={`/checkout/${p.id}`} className="flex items-center gap-4 p-4 rounded-xl border border-line hover:border-accent/40 bg-white group transition-colors">
+                  <Link key={p.id} to={`/checkout/${p.id}`} className="flex items-center gap-4 p-4 rounded-xl border border-line hover:border-accent/40 bg-sidebar group transition-colors">
                      <img src={p.image} className="w-16 h-16 rounded object-cover" referrerPolicy="no-referrer" />
                      <div className="flex-1">
                         <h4 className="font-serif font-bold text-sm mb-1">{t(p.nameKey)}</h4>

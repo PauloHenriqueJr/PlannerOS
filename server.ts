@@ -3,7 +3,19 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
+import { initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import "dotenv/config";
+
+// Tenta inicializar o firebase-admin (depende do ambiente ter GOOGLE_APPLICATION_CREDENTIALS ou service_account.json)
+try {
+  initializeApp({
+    projectId: "gen-lang-client-0779193048"
+  });
+  console.log("Firebase Admin initialized");
+} catch (e) {
+  console.log("Firebase admin initialization skipped or failed:", e);
+}
 
 const PORT = 3000;
 
@@ -28,7 +40,7 @@ async function startServer() {
       }
 
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-        apiVersion: "2025-01-27.acacia"
+        apiVersion: "2025-01-27.acacia" as any
       });
 
       let event;
@@ -41,9 +53,24 @@ async function startServer() {
 
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
-        // Here you would find the user by session.client_reference_id or session.customer_email
-        // and grant them access to the planner they bought (session.metadata.productId)
-        console.log("Payment completed for:", session.customer_email, "Product:", session.metadata?.productId);
+        const userId = session.client_reference_id;
+        const productId = session.metadata?.productId;
+
+        console.log("Payment completed for:", session.customer_email, "Product:", productId);
+
+        if (userId && productId) {
+          try {
+            const userRef = getFirestore().collection("users").doc(userId);
+            await userRef.set({
+              purchasedPlanners: FieldValue.arrayUnion(productId)
+            }, { merge: true });
+            console.log(`Success: Granted access to product ${productId} for user ${userId}`);
+          } catch (dbError: any) {
+            console.error(`Failed to update Firestore for user ${userId}:`, dbError.message);
+          }
+        } else {
+          console.error("Missing userId or productId in session");
+        }
       }
 
       res.json({ received: true });
@@ -83,7 +110,7 @@ async function startServer() {
 
     try {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-        apiVersion: "2025-01-27.acacia"
+        apiVersion: "2025-01-27.acacia" as any
       });
 
       // Price mapping based on language (simulating BRL PIX availability vs Global USD)
@@ -91,7 +118,7 @@ async function startServer() {
       const unitAmount = isPt ? priceBrl * 100 : priceUsd * 100;
 
       // Allow PIX if currency is BRL, otherwise limit to Card/Apple Pay etc.
-      const paymentMethodTypes: Stripe.Checkout.SessionCreateParams.PaymentMethodType[] = isPt 
+      const paymentMethodTypes: any[] = isPt 
         ? ["card", "pix"] 
         : ["card"];
 

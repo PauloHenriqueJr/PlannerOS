@@ -3,16 +3,44 @@ import { createServer as createViteServer } from "vite";
 import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
-import { initializeApp } from "firebase-admin/app";
+import { cert, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import "dotenv/config";
 
-// Tenta inicializar o firebase-admin (depende do ambiente ter GOOGLE_APPLICATION_CREDENTIALS ou service_account.json)
+function getFirebaseAdminConfig() {
+  const fallbackProjectId = "gen-lang-client-0779193048";
+  const jsonSecret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  const base64Secret = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+  const serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(process.cwd(), "service_account.json");
+
+  const parseServiceAccount = (raw: string) => {
+    const serviceAccount = JSON.parse(raw);
+    return {
+      credential: cert(serviceAccount),
+      projectId: serviceAccount.project_id || fallbackProjectId
+    };
+  };
+
+  if (base64Secret) {
+    return parseServiceAccount(Buffer.from(base64Secret, "base64").toString("utf8"));
+  }
+
+  if (jsonSecret) {
+    return parseServiceAccount(jsonSecret);
+  }
+
+  if (fs.existsSync(serviceAccountPath)) {
+    return parseServiceAccount(fs.readFileSync(serviceAccountPath, "utf8"));
+  }
+
+  return { projectId: fallbackProjectId };
+}
+
+// Tenta inicializar o firebase-admin. Para escrita segura no Firestore em produção,
+// use GOOGLE_APPLICATION_CREDENTIALS, service_account.json ou FIREBASE_SERVICE_ACCOUNT_*.
 try {
-  initializeApp({
-    projectId: "gen-lang-client-0779193048"
-  });
+  initializeApp(getFirebaseAdminConfig());
   console.log("Firebase Admin initialized");
 } catch (e) {
   console.log("Firebase admin initialization skipped or failed:", e);

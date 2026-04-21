@@ -1077,6 +1077,11 @@ export default function PlannerApp() {
   
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [scratchpad, setScratchpad] = useState(() => localStorage.getItem('planner_scratchpad') || '');
+
+  useEffect(() => {
+    localStorage.setItem('planner_scratchpad', scratchpad);
+  }, [scratchpad]);
 
   useEffect(() => {
     setActiveTabId(''); // Reset tab selection when planner ID changes
@@ -1148,17 +1153,17 @@ export default function PlannerApp() {
           </div>
 
           {/* Useful Widgets */}
-          <div className="px-6 py-6 space-y-6 flex-1">
+          <div className="px-6 py-6 space-y-6 flex-1 flex flex-col overflow-hidden">
             
             {/* Quick Calendar Widget */}
-            <div className="bg-paper border border-line rounded-xl p-4 shadow-sm">
+            <div className="bg-paper border border-line rounded-xl p-4 shadow-sm shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-[10px] uppercase font-bold tracking-widest text-ink/70">Este Mês</h4>
                 <Calendar size={14} className="text-accent" />
               </div>
               <div className="grid grid-cols-7 gap-1 text-center mb-2">
                 {['D','S','T','Q','Q','S','S'].map((d, i) => (
-                  <div key={i} className="text-[9px] font-bold text-ink/40">{d}</div>
+                  <div key={i} className="text-[8px] font-bold text-ink/40">{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1 text-center">
@@ -1167,7 +1172,7 @@ export default function PlannerApp() {
                   <div 
                     key={i} 
                     className={cn(
-                      "text-xs py-1 rounded-md flex items-center justify-center",
+                      "text-xs py-1 rounded-md flex items-center justify-center font-serif text-sm",
                       i + 1 === new Date().getDate() 
                         ? "bg-accent text-white font-bold shadow-sm" 
                         : "text-ink/70 hover:bg-line/30 cursor-pointer"
@@ -1179,13 +1184,18 @@ export default function PlannerApp() {
               </div>
             </div>
 
-            {/* Daily Quotes / Focus Widget */}
-            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 relative overflow-hidden">
-              <Sparkles size={60} className="absolute -bottom-4 -right-4 text-accent/10 rotate-12" />
-              <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent mb-2">Mensagem do Dia</h4>
-              <p className="font-serif italic text-sm text-ink/80 leading-relaxed relative z-10">
-                "Uma pequena vitória ainda é uma vitória. Celebre o progresso feito hoje."
-              </p>
+            {/* Scratchpad (Quick Notes) */}
+            <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[150px]">
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent">Scratchpad</h4>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent/60"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+              </div>
+              <textarea 
+                className="w-full bg-transparent resize-none flex-1 outline-none text-sm text-ink/80 placeholder:text-ink/30 font-serif"
+                placeholder="Rascunhe ideias rápidas aqui..."
+                value={scratchpad}
+                onChange={(e) => setScratchpad(e.target.value)}
+              />
             </div>
             
           </div>
@@ -1261,50 +1271,42 @@ export default function PlannerApp() {
                 <button 
                   key={tab.id}
                   onClick={() => setActiveTabId(tab.id)}
+                  style={{ 
+                    marginTop: idx === 0 ? '0' : '-8px',
+                    '--tab-color': tab.color || 'var(--bg-tab)'
+                  } as React.CSSProperties}
                   className={cn(
                     "relative py-8 w-12 rounded-r-xl flex items-center justify-center transition-all duration-300 ease-in-out hover:pl-2 group overflow-hidden border-y border-r",
                     isActive 
-                      ? "z-30 w-16 shadow-[-5px_0_15px_rgba(0,0,0,0.15)] dark:shadow-none translate-x-0 border-line" 
-                      : "z-0 opacity-90 hover:opacity-100 border-line/40 dark:border-line/20"
+                      ? "z-30 w-16 shadow-[-5px_0_15px_rgba(0,0,0,0.15)] dark:shadow-none translate-x-0 border-line bg-paper" 
+                      : "z-0 opacity-100 hover:w-14 border-line/40 dark:border-line/20 bg-[var(--tab-color)] dark:bg-sidebar"
                   )}
-                  style={{ 
-                    marginTop: idx === 0 ? '0' : '-8px',
-                    backgroundColor: isActive ? 'var(--bg-paper)' : (tab.color || 'var(--bg-tab)')
-                  }}
                 >
-                  {/* Layer to force coloring in light mode exactly as tab.color, but using paper in active */}
+                  {/* Subtle tint in dark mode for inactive tabs */}
                   {!isActive && (
                     <div 
-                      className="absolute inset-0 z-0 dark:opacity-10" 
-                      style={{ backgroundColor: tab.color || 'var(--bg-tab)' }} 
+                      className="absolute inset-0 opacity-0 dark:opacity-10 z-0 rounded-r-xl pointer-events-none" 
+                      style={{ backgroundColor: 'var(--tab-color)' }} 
                     />
                   )}
 
-                  {/* Active tab colored subtle left-edge (dark mode glow) */}
-                  {isActive && (
-                    <div 
-                      className="absolute inset-0 opacity-10 dark:opacity-20 z-0 pointer-events-none"
-                      style={{ backgroundColor: tab.color || 'var(--brand-accent)' }}
-                    />
-                  )}
-                  
-                  {/* Dark Mode Glow Border overlay */}
+                  {/* Active tab glow left-edge (dark mode glow to simulate tab presence without full color) */}
                   <div 
                     className={cn(
-                      "absolute inset-0 opacity-0 transition-opacity border-r-2 z-0",
-                      isActive ? "dark:opacity-100" : "dark:opacity-30 group-hover:dark:opacity-60"
+                      "absolute left-0 top-0 bottom-0 w-1 z-0 pointer-events-none transition-opacity",
+                      isActive ? "opacity-0 dark:opacity-100" : "opacity-0"
                     )}
-                    style={{ borderColor: tab.color || 'transparent' }}
+                    style={{ backgroundColor: 'var(--tab-color)' }}
                   />
                   
                   <div className="relative z-10 flex flex-col items-center gap-4 [writing-mode:vertical-rl] whitespace-nowrap">
                     <Icon size={18} strokeWidth={2} className={cn(
                       "rotate-90 mb-2 transition-colors",
-                      isActive ? "text-ink dark:text-ink/90" : "text-black/60 dark:text-ink/50"
+                      isActive ? "text-ink" : "text-black/60 dark:text-ink/60"
                     )} />
                     <span className={cn(
                       "text-[10px] font-bold uppercase tracking-[0.2em] font-sans",
-                      isActive ? "text-ink dark:text-ink/90" : "text-black/60 dark:text-ink/50"
+                      isActive ? "text-ink" : "text-black/60 dark:text-ink/60"
                     )}>
                       {tab.label}
                     </span>

@@ -1326,7 +1326,7 @@ export default function PlannerApp() {
   if (!product) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full relative">
+    <div className="flex flex-col md:flex-row h-full w-full relative overflow-x-hidden">
       {/* Mobile Topbar */}
       {!isFullscreen && (
         <div className="md:hidden flex items-center justify-between p-4 border-b border-line bg-sidebar shrink-0 shadow-sm z-10">
@@ -1404,7 +1404,7 @@ export default function PlannerApp() {
       {/* Main Planner Canvas */}
       <main className={cn(
         "flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-2 md:p-4 transition-colors duration-500",
-        isFullscreen ? "p-0 h-screen w-screen" : "h-[calc(100vh-3.5rem)] md:h-full"
+        isFullscreen ? "p-0 h-full w-full" : "h-[calc(100vh-3.5rem)] md:h-full"
       )}>
         <div className={cn(
           "w-full h-full flex flex-row relative",

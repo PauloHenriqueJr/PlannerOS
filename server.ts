@@ -37,13 +37,30 @@ function getFirebaseAdminConfig() {
   return { projectId: fallbackProjectId };
 }
 
-// Tenta inicializar o firebase-admin. Para escrita segura no Firestore em produção,
-// use GOOGLE_APPLICATION_CREDENTIALS, service_account.json ou FIREBASE_SERVICE_ACCOUNT_*.
+function validateRequiredEnvVars() {
+  const required = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'HOTMART_HOTTOK'];
+  const missing = required.filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`[Boot] FATAL: Missing required env vars: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 try {
-  initializeApp(getFirebaseAdminConfig());
-  console.log("Firebase Admin initialized");
-} catch (e) {
-  console.log("Firebase admin initialization skipped or failed:", e);
+  const config = getFirebaseAdminConfig();
+  initializeApp(config);
+  if (!('credential' in config)) {
+    console.warn("[Boot] WARNING: Firebase Admin running WITHOUT credentials. Webhook DB writes will fail.");
+  } else {
+    console.log("Firebase Admin initialized with credentials.");
+  }
+} catch (e: any) {
+  if (e?.code === 'app/duplicate-app') {
+    console.log("Firebase Admin already initialized.");
+  } else {
+    console.error("[Boot] FATAL: Firebase Admin init failed:", e);
+    process.exit(1);
+  }
 }
 
 const PRODUCTS_TO_SEED = [
@@ -193,6 +210,8 @@ async function autoSeedProducts() {
 }
 
 async function startServer() {
+  validateRequiredEnvVars();
+
   const app = express();
   const PORT = Number(process.env.PORT || 3000);
 
@@ -230,25 +249,36 @@ async function startServer() {
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
 
+      // Idempotency: skip if already processed
+      const db = getFirestore();
+      const eventRef = db.collection("processed_webhook_events").doc(event.id);
+      const alreadyProcessed = await eventRef.get();
+      if (alreadyProcessed.exists) {
+        return res.json({ received: true, duplicate: true });
+      }
+
       if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.client_reference_id;
         const productId = session.metadata?.productId;
 
-        console.log("Payment completed for:", session.customer_email, "Product:", productId);
+        if (!userId || !productId) {
+          console.error("Missing userId or productId in session:", event.id);
+          // 400 = don't retry (code bug, not transient)
+          return res.status(400).send("Missing session metadata");
+        }
 
-        if (userId && productId) {
-          try {
-            const userRef = getFirestore().collection("users").doc(userId);
-            await userRef.set({
-              purchasedPlanners: FieldValue.arrayUnion(productId)
-            }, { merge: true });
-            console.log(`Success: Granted access to product ${productId} for user ${userId}`);
-          } catch (dbError: any) {
-            console.error(`Failed to update Firestore for user ${userId}:`, dbError.message);
-          }
-        } else {
-          console.error("Missing userId or productId in session");
+        try {
+          const userRef = db.collection("users").doc(userId);
+          await userRef.set({
+            purchasedPlanners: FieldValue.arrayUnion(productId)
+          }, { merge: true });
+          await eventRef.set({ processedAt: FieldValue.serverTimestamp(), type: event.type });
+          console.log(`Granted access to ${productId} for user ${userId}`);
+        } catch (dbError: any) {
+          console.error(`Firestore write failed for user ${userId}:`, dbError.message);
+          // 500 = Stripe will retry
+          return res.status(500).send("DB write failed");
         }
       }
 
@@ -279,9 +309,9 @@ async function resolveProductId(externalId: string): Promise<string> {
 // Webhook for Hotmart (usually JSON payload, verify Hotmart token)
 app.post("/api/webhooks/hotmart", async (req, res) => {
   const hotmartToken = req.headers['x-hotmart-hottok'];
-  
-  if (process.env.HOTMART_HOTTTOk && hotmartToken !== process.env.HOTMART_HOTTTOk) {
-    console.warn("Unauthorized: Invalid Hotmart Token received");
+
+  if (!hotmartToken || hotmartToken !== process.env.HOTMART_HOTTOK) {
+    console.warn("Unauthorized: Invalid or missing Hotmart Token");
     return res.status(401).send("Unauthorized: Invalid Hottok");
   }
 
@@ -427,7 +457,7 @@ async function autoSeedProducts() {
 // Admin endpoint to seed current products to Firestore
 app.post("/api/admin/seed-products", async (req, res) => {
   const { adminToken } = req.body;
-  if (adminToken !== process.env.HOTMART_HOTTTOk) {
+  if (!adminToken || adminToken !== process.env.HOTMART_HOTTOK) {
     return res.status(401).send("Unauthorized");
   }
 

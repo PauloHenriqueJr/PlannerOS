@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Sistema Empreendedor</title>
+  <desc id="desc">Mockup visual com sprint, fluxo de caixa, CRM e brainstorm de lancamentos.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9f99d"/>
+      <stop offset=".52" stop-color="#dbeafe"/>
+      <stop offset="1" stop-color="#f5d0fe"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="25" flood-color="#164e63" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <g transform="translate(88 86)" filter="url(#shadow)">
+    <rect width="1024" height="728" rx="38" fill="#f8f5f2"/>
+    <rect x="44" y="44" width="936" height="108" rx="28" fill="#242220"/>
+    <text x="86" y="108" fill="#e8e1d9" font-family="Georgia, serif" font-size="46" font-style="italic" font-weight="700">Small Biz Creator OS</text>
+    <text x="756" y="106" fill="#d4b895" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="2">VENDA + CRM</text>
+    <rect x="44" y="194" width="292" height="472" rx="26" fill="#ffffff"/>
+    <text x="76" y="246" fill="#0f766e" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">SPRINT</text>
+    <rect x="76" y="284" width="228" height="64" rx="16" fill="#ecfeff"/>
+    <text x="98" y="323" fill="#134e4a" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Landing final</text>
+    <rect x="76" y="370" width="228" height="64" rx="16" fill="#f0fdf4"/>
+    <text x="98" y="409" fill="#166534" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Webhook Stripe</text>
+    <rect x="76" y="456" width="228" height="64" rx="16" fill="#eff6ff"/>
+    <text x="98" y="495" fill="#1d4ed8" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="800">Criativos ads</text>
+    <rect x="366" y="194" width="292" height="472" rx="26" fill="#ffffff"/>
+    <text x="398" y="246" fill="#16a34a" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">CAIXA</text>
+    <text x="398" y="314" fill="#3d3d3d" font-family="Georgia, serif" font-size="46" font-style="italic" font-weight="700">R$ 1.500</text>
+    <text x="402" y="348" fill="#a6927c" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="800">META DA SEMANA</text>
+    <rect x="398" y="402" width="216" height="18" rx="9" fill="#22c55e"/>
+    <rect x="398" y="452" width="160" height="18" rx="9" fill="#60a5fa"/>
+    <rect x="398" y="502" width="104" height="18" rx="9" fill="#c084fc"/>
+    <rect x="688" y="194" width="292" height="472" rx="26" fill="#ffffff"/>
+    <text x="720" y="246" fill="#6366f1" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">CRM</text>
+    <g font-family="Inter, Arial, sans-serif" font-size="17" fill="#3d3d3d">
+      <circle cx="738" cy="302" r="18" fill="#dbeafe"/>
+      <text x="772" y="308">Lead Instagram</text>
+      <circle cx="738" cy="372" r="18" fill="#fef3c7"/>
+      <text x="772" y="378">Parceria creator</text>
+      <circle cx="738" cy="442" r="18" fill="#dcfce7"/>
+      <text x="772" y="448">Cliente teste</text>
+    </g>
+    <rect x="720" y="540" width="210" height="54" rx="16" fill="#242220"/>
+    <text x="748" y="575" fill="#e8e1d9" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800">lancamento pronto</text>
+  </g>
+</svg>

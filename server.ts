@@ -80,7 +80,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_adhd_desc',
     priceUsd: 14.90,
     priceBrl: 47.90,
-    image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/adhd-planner-2026.svg',
     tagKey: 'prod_adhd_tag',
     active: true,
     order: 1
@@ -91,7 +91,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_itgirl_desc',
     priceUsd: 12.90,
     priceBrl: 37.90,
-    image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/it-girl-wellness.svg',
     tagKey: 'prod_itgirl_tag',
     active: true,
     order: 2
@@ -102,7 +102,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_undated_desc',
     priceUsd: 14.90,
     priceBrl: 47.90,
-    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/undated-digital-planner.svg',
     tagKey: 'prod_undated_tag',
     active: true,
     order: 3
@@ -113,7 +113,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_smallbiz_desc',
     priceUsd: 19.90,
     priceBrl: 67.90,
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/small-business-os.svg',
     tagKey: 'prod_smallbiz_tag',
     active: true,
     order: 4
@@ -124,7 +124,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_meal_desc',
     priceUsd: 9.90,
     priceBrl: 27.90,
-    image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/meal-prep-weekly.svg',
     tagKey: 'prod_meal_tag',
     active: true,
     order: 5
@@ -135,7 +135,7 @@ const PRODUCTS_TO_SEED = [
     descKey: 'prod_weight_desc',
     priceUsd: 9.90,
     priceBrl: 27.90,
-    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
+    image: '/planner-covers/weight-loss-tracker.svg',
     tagKey: 'prod_weight_tag',
     active: true,
     order: 6

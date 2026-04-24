@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Agenda Digital Classica</title>
+  <desc id="desc">Mockup visual com calendario mensal, agenda diaria e tarefas em andamento.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1ebe3"/>
+      <stop offset=".5" stop-color="#d8e7ff"/>
+      <stop offset="1" stop-color="#fff3c7"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="25" flood-color="#3d3d3d" flood-opacity=".22"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <g transform="translate(90 82)" filter="url(#shadow)">
+    <rect width="1020" height="736" rx="38" fill="#f8f5f2"/>
+    <rect x="44" y="48" width="932" height="96" rx="24" fill="#ffffff"/>
+    <text x="82" y="106" fill="#3d3d3d" font-family="Georgia, serif" font-size="48" font-style="italic" font-weight="700">Agenda Digital</text>
+    <text x="710" y="104" fill="#a6927c" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="2">MENSAL + DIARIO</text>
+    <rect x="44" y="184" width="560" height="486" rx="28" fill="#ffffff"/>
+    <text x="82" y="238" fill="#3d3d3d" font-family="Georgia, serif" font-size="34" font-style="italic" font-weight="700">Abril 2026</text>
+    <g transform="translate(82 276)" fill="#f8f5f2" stroke="#e8e1d9" stroke-width="2">
+      <rect width="450" height="320" rx="18" fill="#f8f5f2"/>
+      <g fill="#ffffff">
+        <rect x="16" y="18" width="50" height="44" rx="8"/>
+        <rect x="78" y="18" width="50" height="44" rx="8"/>
+        <rect x="140" y="18" width="50" height="44" rx="8"/>
+        <rect x="202" y="18" width="50" height="44" rx="8"/>
+        <rect x="264" y="18" width="50" height="44" rx="8"/>
+        <rect x="326" y="18" width="50" height="44" rx="8"/>
+        <rect x="388" y="18" width="46" height="44" rx="8"/>
+        <rect x="16" y="76" width="50" height="44" rx="8"/>
+        <rect x="78" y="76" width="50" height="44" rx="8"/>
+        <rect x="140" y="76" width="50" height="44" rx="8"/>
+        <rect x="202" y="76" width="50" height="44" rx="8"/>
+        <rect x="264" y="76" width="50" height="44" rx="8"/>
+        <rect x="326" y="76" width="50" height="44" rx="8"/>
+        <rect x="388" y="76" width="46" height="44" rx="8"/>
+        <rect x="16" y="134" width="50" height="44" rx="8"/>
+        <rect x="78" y="134" width="50" height="44" rx="8"/>
+        <rect x="140" y="134" width="50" height="44" rx="8"/>
+        <rect x="202" y="134" width="50" height="44" rx="8"/>
+        <rect x="264" y="134" width="50" height="44" rx="8"/>
+        <rect x="326" y="134" width="50" height="44" rx="8"/>
+        <rect x="388" y="134" width="46" height="44" rx="8"/>
+      </g>
+      <rect x="202" y="134" width="50" height="44" rx="8" fill="#a6927c"/>
+    </g>
+    <rect x="640" y="184" width="336" height="486" rx="28" fill="#ffffff"/>
+    <text x="678" y="238" fill="#3d3d3d" font-family="Georgia, serif" font-size="34" font-style="italic" font-weight="700">Hoje</text>
+    <g font-family="Inter, Arial, sans-serif" font-size="17" fill="#3d3d3d">
+      <text x="682" y="292" fill="#a6927c" font-weight="800">TOP 3</text>
+      <text x="682" y="334">1. Validar checkout</text>
+      <text x="682" y="376">2. Criar posts</text>
+      <text x="682" y="418">3. Revisar metricas</text>
+      <line x1="682" y1="462" x2="934" y2="462" stroke="#e8e1d9" stroke-width="3"/>
+      <text x="682" y="510" fill="#a6927c" font-weight="800">AGENDA</text>
+      <text x="682" y="552">09:00 Planejamento</text>
+      <text x="682" y="594">14:00 Conteudo</text>
+    </g>
+  </g>
+</svg>

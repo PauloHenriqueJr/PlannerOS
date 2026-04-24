@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Matriz Semanal de Refeicoes</title>
+  <desc id="desc">Mockup visual com cardapio semanal, lista de compras e receitas.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#dcfce7"/>
+      <stop offset=".5" stop-color="#fff7ed"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="28" stdDeviation="25" flood-color="#7c2d12" flood-opacity=".20"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="900" fill="url(#bg)"/>
+  <g transform="translate(88 86)" filter="url(#shadow)">
+    <rect width="1024" height="728" rx="38" fill="#f8f5f2"/>
+    <rect x="44" y="46" width="936" height="110" rx="28" fill="#ffffff"/>
+    <text x="82" y="110" fill="#3d3d3d" font-family="Georgia, serif" font-size="46" font-style="italic" font-weight="700">Meal Prep Weekly</text>
+    <text x="750" y="106" fill="#a6927c" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="800" letter-spacing="2">MENU + LISTA</text>
+    <rect x="44" y="194" width="620" height="472" rx="28" fill="#ffffff"/>
+    <text x="78" y="244" fill="#166534" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">CARDAPIO DA SEMANA</text>
+    <g transform="translate(78 278)" font-family="Inter, Arial, sans-serif" font-size="15">
+      <rect width="552" height="314" rx="18" fill="#f8f5f2"/>
+      <g fill="#a6927c" font-weight="900">
+        <text x="28" y="42">DIA</text><text x="134" y="42">CAFE</text><text x="258" y="42">ALMOCO</text><text x="406" y="42">JANTAR</text>
+      </g>
+      <g fill="#3d3d3d">
+        <text x="28" y="92">SEG</text><text x="134" y="92">Iogurte</text><text x="258" y="92">Frango</text><text x="406" y="92">Sopa</text>
+        <text x="28" y="144">TER</text><text x="134" y="144">Ovos</text><text x="258" y="144">Bowl</text><text x="406" y="144">Omelete</text>
+        <text x="28" y="196">QUA</text><text x="134" y="196">Smoothie</text><text x="258" y="196">Carne</text><text x="406" y="196">Wrap</text>
+        <text x="28" y="248">QUI</text><text x="134" y="248">Aveia</text><text x="258" y="248">Peixe</text><text x="406" y="248">Risoto</text>
+      </g>
+      <g stroke="#e8e1d9" stroke-width="2">
+        <line x1="16" y1="62" x2="536" y2="62"/>
+        <line x1="16" y1="114" x2="536" y2="114"/>
+        <line x1="16" y1="166" x2="536" y2="166"/>
+        <line x1="16" y1="218" x2="536" y2="218"/>
+        <line x1="16" y1="270" x2="536" y2="270"/>
+      </g>
+    </g>
+    <rect x="700" y="194" width="280" height="220" rx="28" fill="#ffffff"/>
+    <text x="732" y="246" fill="#ea580c" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">COMPRAS</text>
+    <g font-family="Inter, Arial, sans-serif" font-size="17" fill="#3d3d3d">
+      <rect x="734" y="284" width="22" height="22" rx="6" fill="#a6927c"/>
+      <text x="772" y="302">Ovos</text>
+      <rect x="734" y="330" width="22" height="22" rx="6" fill="#a6927c"/>
+      <text x="772" y="348">Frango</text>
+      <rect x="734" y="376" width="22" height="22" rx="6" fill="none" stroke="#a6927c" stroke-width="4"/>
+      <text x="772" y="394">Folhas</text>
+    </g>
+    <rect x="700" y="446" width="280" height="220" rx="28" fill="#fff7ed"/>
+    <text x="732" y="498" fill="#9a3412" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="900">RECEITAS</text>
+    <text x="732" y="552" fill="#3d3d3d" font-family="Georgia, serif" font-size="28" font-style="italic" font-weight="700">Bowl mediterraneo</text>
+    <text x="732" y="592" fill="#3d3d3d" font-family="Georgia, serif" font-size="28" font-style="italic" font-weight="700">Sopa de legumes</text>
+  </g>
+</svg>

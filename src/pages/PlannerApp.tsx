@@ -698,6 +698,432 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
 
 // --- Specific Views ---
 
+function BusinessKanbanView({ plannerId, title, subtitle, storagePrefix, whatKey }: any) {
+  const docId = `${storagePrefix}_${plannerId}`;
+  const { t } = useTranslation();
+  const initialState = {
+    projects: [
+      {
+        id: uuidv4(),
+        name: 'Lancamento Plannos',
+        goal: 'Validar primeira oferta paga',
+        deadline: '',
+        tasks: [
+          { id: uuidv4(), title: 'Revisar pagina de vendas', stage: 'doing', owner: 'Paulo', due: '', completed: false },
+          { id: uuidv4(), title: 'Gravar demo do planner preenchido', stage: 'next', owner: 'Paulo', due: '', completed: false },
+        ],
+      },
+    ],
+  };
+  const [data, setData, isSyncing] = useCloudSync<any>(docId, initialState);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+
+  useEffect(() => {
+    if (Array.isArray(data)) {
+      setData({
+        projects: data.map((row: any) => ({
+          id: row.id || uuidv4(),
+          name: row.col1 || 'Projeto',
+          goal: row.col2 || '',
+          deadline: '',
+          tasks: [
+            { id: uuidv4(), title: row.col1 || 'Nova tarefa', stage: row.col2?.toLowerCase?.().includes('concl') ? 'done' : 'next', owner: '', due: '', completed: row.col2?.toLowerCase?.().includes('concl') || false },
+          ],
+        })),
+      });
+    }
+  }, [data, setData]);
+
+  const projects = Array.isArray(data?.projects) ? data.projects : [];
+  const selectedProject = projects.find((project: any) => project.id === selectedProjectId) || projects[0];
+  const stages = [
+    { id: 'backlog', label: 'Backlog' },
+    { id: 'next', label: 'Proximo' },
+    { id: 'doing', label: 'Fazendo' },
+    { id: 'done', label: 'Feito' },
+  ];
+
+  const updateProjects = (mapper: (projects: any[]) => any[]) => {
+    setData((prev: any) => ({ ...(prev && !Array.isArray(prev) ? prev : {}), projects: mapper(Array.isArray(prev?.projects) ? prev.projects : []) }));
+  };
+
+  const addProject = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+    const project = { id: uuidv4(), name: newProjectName.trim(), goal: '', deadline: '', tasks: [] };
+    updateProjects((current) => [...current, project]);
+    setSelectedProjectId(project.id);
+    setNewProjectName('');
+  };
+
+  const addTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProject || !newTaskTitle.trim()) return;
+    updateProjects((current) => current.map((project) => project.id === selectedProject.id ? {
+      ...project,
+      tasks: [...(project.tasks || []), { id: uuidv4(), title: newTaskTitle.trim(), stage: 'backlog', owner: '', due: '', completed: false }],
+    } : project));
+    setNewTaskTitle('');
+  };
+
+  const updateProject = (projectId: string, patch: any) => {
+    updateProjects((current) => current.map((project) => project.id === projectId ? { ...project, ...patch } : project));
+  };
+
+  const removeProject = (projectId: string) => {
+    updateProjects((current) => current.filter((project) => project.id !== projectId));
+    if (selectedProjectId === projectId) setSelectedProjectId('');
+  };
+
+  const updateTask = (projectId: string, taskId: string, patch: any) => {
+    updateProjects((current) => current.map((project) => project.id === projectId ? {
+      ...project,
+      tasks: (project.tasks || []).map((task: any) => task.id === taskId ? { ...task, ...patch } : task),
+    } : project));
+  };
+
+  const removeTask = (projectId: string, taskId: string) => {
+    updateProjects((current) => current.map((project) => project.id === projectId ? {
+      ...project,
+      tasks: (project.tasks || []).filter((task: any) => task.id !== taskId),
+    } : project));
+  };
+
+  const completedTasks = (selectedProject?.tasks || []).filter((task: any) => task.completed || task.stage === 'done').length;
+
+  return (
+    <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
+      <div className="grid lg:grid-cols-[260px_1fr] gap-6 flex-1 min-h-0">
+        <aside className="border border-line bg-sidebar rounded-xl p-4 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-4">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-accent">Projetos</label>
+            <span className="text-xs text-ink/50">{completedTasks}/{selectedProject?.tasks?.length || 0}</span>
+          </div>
+          <div className="space-y-2 overflow-y-auto pr-1">
+            {projects.map((project: any) => (
+              <button
+                key={project.id}
+                type="button"
+                onClick={() => setSelectedProjectId(project.id)}
+                className={cn("w-full text-left rounded-lg border p-3 transition-colors", selectedProject?.id === project.id ? "border-accent bg-paper" : "border-line hover:border-accent/50")}
+              >
+                <div className="font-serif italic text-lg leading-tight truncate">{project.name}</div>
+                <div className="text-[10px] uppercase tracking-widest text-ink/45 truncate mt-1">{project.goal || 'Sem meta definida'}</div>
+              </button>
+            ))}
+          </div>
+          <form onSubmit={addProject} className="mt-4 flex gap-2 border-t border-line pt-4">
+            <input value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="Novo projeto" className="min-w-0 flex-1 bg-transparent border-b border-line text-sm pb-2 focus:outline-none focus:border-accent" />
+            <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-2">{t('add_btn')}</button>
+          </form>
+        </aside>
+
+        <section className="min-w-0 flex flex-col min-h-0">
+          {selectedProject ? (
+            <>
+              <div className="grid md:grid-cols-[1fr_180px_auto] gap-3 mb-5">
+                <input value={selectedProject.name} onChange={(e) => updateProject(selectedProject.id, { name: e.target.value })} className="bg-transparent border-b border-line py-2 font-serif italic text-2xl focus:outline-none focus:border-accent" />
+                <input value={selectedProject.deadline || ''} onChange={(e) => updateProject(selectedProject.id, { deadline: e.target.value })} placeholder="Prazo" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+                <button type="button" onClick={() => removeProject(selectedProject.id)} className="px-3 py-2 text-red-800/70 hover:text-red-800" title={t('del_btn')}><Trash2 size={16} /></button>
+                <input value={selectedProject.goal || ''} onChange={(e) => updateProject(selectedProject.id, { goal: e.target.value })} placeholder="Meta do projeto" className="md:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+              </div>
+              <form onSubmit={addTask} className="flex gap-3 mb-5">
+                <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Nova tarefa dentro deste projeto" className="flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+                <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-3">{t('add_btn')}</button>
+              </form>
+              <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-4 overflow-auto pb-4">
+                {stages.map((stage) => (
+                  <div key={stage.id} className="rounded-xl border border-line bg-sidebar/70 p-3 min-h-[320px]">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-[10px] uppercase tracking-widest font-bold text-accent">{stage.label}</h3>
+                      <span className="text-xs text-ink/45">{(selectedProject.tasks || []).filter((task: any) => task.stage === stage.id).length}</span>
+                    </div>
+                    <div className="space-y-3">
+                      {(selectedProject.tasks || []).filter((task: any) => task.stage === stage.id).map((task: any) => (
+                        <div key={task.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm">
+                          <input value={task.title} onChange={(e) => updateTask(selectedProject.id, task.id, { title: e.target.value })} className="w-full bg-transparent text-sm font-medium text-ink focus:outline-none border-b border-transparent focus:border-accent pb-1" />
+                          <div className="grid grid-cols-2 gap-2 mt-3">
+                            <input value={task.owner || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { owner: e.target.value })} placeholder="Responsavel" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                            <input value={task.due || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { due: e.target.value })} placeholder="Prazo" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                          </div>
+                          <div className="flex items-center justify-between mt-3">
+                            <select value={task.stage} onChange={(e) => updateTask(selectedProject.id, task.id, { stage: e.target.value, completed: e.target.value === 'done' })} className="bg-transparent text-xs text-accent font-bold outline-none">
+                              {stages.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                            </select>
+                            <button type="button" onClick={() => removeTask(selectedProject.id, task.id)} className="text-red-800/60 hover:text-red-800" title={t('del_btn')}><Trash2 size={14} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-accent/30 bg-sidebar p-8 text-sm text-ink/60">Crie um projeto para iniciar seu kanban.</div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function BusinessCashflowView({ plannerId, title, subtitle, storagePrefix, whatKey }: any) {
+  const docId = `${storagePrefix}_${plannerId}`;
+  const { t } = useTranslation();
+  const [data, setData, isSyncing] = useCloudSync<any>(docId, { target: '1500', records: [] });
+  const [draft, setDraft] = useState({ description: '', amount: '', type: 'income', status: 'planned', date: '' });
+
+  useEffect(() => {
+    if (Array.isArray(data)) {
+      setData({
+        target: '1500',
+        records: data.map((row: any) => ({
+          id: row.id || uuidv4(),
+          description: row.col1 || '',
+          amount: String(row.col2 || '').replace(/[^\d,-.]/g, '').replace(',', '.'),
+          type: String(row.col2 || '').includes('-') ? 'expense' : 'income',
+          status: 'planned',
+          date: '',
+        })),
+      });
+    }
+  }, [data, setData]);
+
+  const records = Array.isArray(data?.records) ? data.records : [];
+  const amountOf = (record: any) => Number.parseFloat(String(record.amount || '0').replace(',', '.')) || 0;
+  const income = records.filter((record: any) => record.type === 'income').reduce((sum: number, record: any) => sum + amountOf(record), 0);
+  const expense = records.filter((record: any) => record.type === 'expense').reduce((sum: number, record: any) => sum + amountOf(record), 0);
+  const net = income - expense;
+
+  const updateRecord = (id: string, patch: any) => {
+    setData((prev: any) => ({ ...(prev && !Array.isArray(prev) ? prev : {}), records: (prev?.records || []).map((record: any) => record.id === id ? { ...record, ...patch } : record) }));
+  };
+
+  const addRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draft.description.trim()) return;
+    setData((prev: any) => ({
+      ...(prev && !Array.isArray(prev) ? prev : {}),
+      records: [...(prev?.records || []), { id: uuidv4(), ...draft, amount: draft.amount || '0' }],
+    }));
+    setDraft({ description: '', amount: '', type: 'income', status: 'planned', date: '' });
+  };
+
+  const removeRecord = (id: string) => {
+    setData((prev: any) => ({ ...(prev && !Array.isArray(prev) ? prev : {}), records: (prev?.records || []).filter((record: any) => record.id !== id) }));
+  };
+
+  return (
+    <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
+      <div className="grid md:grid-cols-4 gap-4 mb-6">
+        {[
+          ['Entradas', income],
+          ['Saidas', expense],
+          ['Saldo', net],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-xl border border-line bg-sidebar p-4">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">{label}</p>
+            <p className="font-serif italic text-3xl">{Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+          </div>
+        ))}
+        <div className="rounded-xl border border-line bg-sidebar p-4">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2">Meta</p>
+          <input value={data?.target || ''} onChange={(e) => setData((prev: any) => ({ ...(prev || {}), target: e.target.value }))} className="w-full bg-transparent font-serif italic text-3xl focus:outline-none border-b border-line focus:border-accent" />
+        </div>
+      </div>
+      <form onSubmit={addRecord} className="grid md:grid-cols-[1fr_120px_120px_120px_120px_auto] gap-3 mb-6">
+        <input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Descricao" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+        <input value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder="Valor" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+        <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })} className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent"><option value="income">Entrada</option><option value="expense">Saida</option></select>
+        <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })} className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent"><option value="planned">Previsto</option><option value="paid">Pago</option></select>
+        <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder="Data" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+        <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-2">{t('add_btn')}</button>
+      </form>
+      <div className="flex-1 overflow-auto rounded-xl border border-line bg-sidebar">
+        <table className="w-full text-left min-w-[760px]">
+          <thead className="text-[10px] uppercase tracking-widest text-accent">
+            <tr><th className="p-3">Descricao</th><th>Valor</th><th>Tipo</th><th>Status</th><th>Data</th><th /></tr>
+          </thead>
+          <tbody>
+            {records.map((record: any) => (
+              <tr key={record.id} className="border-t border-line">
+                <td className="p-3"><input value={record.description} onChange={(e) => updateRecord(record.id, { description: e.target.value })} className="w-full bg-transparent text-sm focus:outline-none" /></td>
+                <td><input value={record.amount} onChange={(e) => updateRecord(record.id, { amount: e.target.value })} className="w-24 bg-transparent text-sm focus:outline-none" /></td>
+                <td><select value={record.type} onChange={(e) => updateRecord(record.id, { type: e.target.value })} className="bg-transparent text-sm focus:outline-none"><option value="income">Entrada</option><option value="expense">Saida</option></select></td>
+                <td><select value={record.status} onChange={(e) => updateRecord(record.id, { status: e.target.value })} className="bg-transparent text-sm focus:outline-none"><option value="planned">Previsto</option><option value="paid">Pago</option></select></td>
+                <td><input value={record.date || ''} onChange={(e) => updateRecord(record.id, { date: e.target.value })} className="w-28 bg-transparent text-sm focus:outline-none" /></td>
+                <td className="text-right pr-3"><button type="button" onClick={() => removeRecord(record.id)} className="p-2 text-red-800/70 hover:text-red-800"><Trash2 size={14} /></button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BusinessCrmView({ plannerId, title, subtitle, storagePrefix, whatKey }: any) {
+  const docId = `${storagePrefix}_${plannerId}`;
+  const { t } = useTranslation();
+  const [data, setData, isSyncing] = useCloudSync<any>(docId, { clients: [] });
+  const [newClient, setNewClient] = useState('');
+  const stages = ['Lead', 'Conversa', 'Proposta', 'Fechado'];
+
+  useEffect(() => {
+    if (Array.isArray(data)) {
+      setData({
+        clients: data.map((row: any) => ({
+          id: row.id || uuidv4(),
+          name: row.col1 || 'Cliente',
+          stage: row.col2 || 'Lead',
+          contact: '',
+          nextAction: '',
+          value: '',
+          notes: '',
+        })),
+      });
+    }
+  }, [data, setData]);
+
+  const clients = Array.isArray(data?.clients) ? data.clients : [];
+  const updateClients = (mapper: (clients: any[]) => any[]) => setData((prev: any) => ({ ...(prev && !Array.isArray(prev) ? prev : {}), clients: mapper(Array.isArray(prev?.clients) ? prev.clients : []) }));
+  const addClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClient.trim()) return;
+    updateClients((current) => [...current, { id: uuidv4(), name: newClient.trim(), stage: 'Lead', contact: '', nextAction: '', value: '', notes: '' }]);
+    setNewClient('');
+  };
+  const updateClient = (id: string, patch: any) => updateClients((current) => current.map((client) => client.id === id ? { ...client, ...patch } : client));
+  const removeClient = (id: string) => updateClients((current) => current.filter((client) => client.id !== id));
+
+  return (
+    <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
+      <form onSubmit={addClient} className="flex gap-3 mb-5">
+        <input value={newClient} onChange={(e) => setNewClient(e.target.value)} placeholder="Novo lead ou cliente" className="flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+        <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-3">{t('add_btn')}</button>
+      </form>
+      <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-4 overflow-auto pb-4">
+        {stages.map((stage) => (
+          <section key={stage} className="rounded-xl border border-line bg-sidebar/70 p-3 min-h-[360px]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[10px] uppercase tracking-widest font-bold text-accent">{stage}</h3>
+              <span className="text-xs text-ink/45">{clients.filter((client: any) => client.stage === stage).length}</span>
+            </div>
+            <div className="space-y-3">
+              {clients.filter((client: any) => client.stage === stage).map((client: any) => (
+                <div key={client.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm space-y-2">
+                  <input value={client.name} onChange={(e) => updateClient(client.id, { name: e.target.value })} className="w-full bg-transparent font-serif italic text-xl focus:outline-none border-b border-transparent focus:border-accent" />
+                  <input value={client.contact || ''} onChange={(e) => updateClient(client.id, { contact: e.target.value })} placeholder="Contato" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
+                  <input value={client.nextAction || ''} onChange={(e) => updateClient(client.id, { nextAction: e.target.value })} placeholder="Proxima acao" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
+                  <div className="flex gap-2">
+                    <input value={client.value || ''} onChange={(e) => updateClient(client.id, { value: e.target.value })} placeholder="Valor" className="min-w-0 flex-1 bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                    <select value={client.stage} onChange={(e) => updateClient(client.id, { stage: e.target.value })} className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent">
+                      {stages.map((item) => <option key={item} value={item}>{item}</option>)}
+                    </select>
+                  </div>
+                  <textarea value={client.notes || ''} onChange={(e) => updateClient(client.id, { notes: e.target.value })} placeholder="Notas" className="w-full min-h-16 bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent resize-none" />
+                  <div className="flex justify-end"><button type="button" onClick={() => removeClient(client.id)} className="p-2 text-red-800/70 hover:text-red-800"><Trash2 size={14} /></button></div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BusinessLaunchView({ plannerId, title, subtitle, storagePrefix, whatKey }: any) {
+  const docId = `${storagePrefix}_${plannerId}`;
+  const [data, setData, isSyncing] = useCloudSync<any>(docId, {
+    offer: '',
+    audience: '',
+    promise: '',
+    channels: '',
+    notes: '',
+    checklist: [
+      { id: uuidv4(), text: 'Definir oferta e preco', completed: false },
+      { id: uuidv4(), text: 'Criar prova visual do produto', completed: false },
+      { id: uuidv4(), text: 'Publicar primeiro canal de venda', completed: false },
+    ],
+  });
+  const [newItem, setNewItem] = useState('');
+
+  useEffect(() => {
+    if (typeof data === 'string') {
+      setData({
+        offer: '',
+        audience: '',
+        promise: '',
+        channels: '',
+        notes: data,
+        checklist: [
+          { id: uuidv4(), text: 'Definir oferta e preco', completed: false },
+          { id: uuidv4(), text: 'Criar prova visual do produto', completed: false },
+          { id: uuidv4(), text: 'Publicar primeiro canal de venda', completed: false },
+        ],
+      });
+    }
+  }, [data, setData]);
+
+  const updateField = (field: string, value: string) => setData((prev: any) => ({ ...(prev && typeof prev === 'object' ? prev : {}), [field]: value }));
+  const checklist = Array.isArray(data?.checklist) ? data.checklist : [];
+  const updateChecklist = (mapper: (items: any[]) => any[]) => setData((prev: any) => ({ ...(prev && typeof prev === 'object' ? prev : {}), checklist: mapper(Array.isArray(prev?.checklist) ? prev.checklist : []) }));
+  const addChecklistItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newItem.trim()) return;
+    updateChecklist((items) => [...items, { id: uuidv4(), text: newItem.trim(), completed: false }]);
+    setNewItem('');
+  };
+
+  return (
+    <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
+      <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
+      <div className="grid lg:grid-cols-[1.2fr_.8fr] gap-6 flex-1 min-h-0 overflow-auto pb-4">
+        <section className="grid sm:grid-cols-2 gap-4 content-start">
+          {[
+            ['offer', 'Oferta'],
+            ['audience', 'Publico'],
+            ['promise', 'Promessa'],
+            ['channels', 'Canais'],
+          ].map(([field, label]) => (
+            <div key={field} className="rounded-xl border border-line bg-sidebar p-4 min-h-40">
+              <label className="text-[10px] uppercase tracking-widest font-bold text-accent mb-3 block">{label}</label>
+              <textarea value={data?.[field] || ''} onChange={(e) => updateField(field, e.target.value)} className="w-full h-24 resize-none bg-transparent text-sm focus:outline-none" placeholder={`Escreva ${label.toLowerCase()}...`} />
+            </div>
+          ))}
+          <div className="sm:col-span-2 rounded-xl border border-line bg-sidebar p-4 min-h-44">
+            <label className="text-[10px] uppercase tracking-widest font-bold text-accent mb-3 block">Notas estrategicas</label>
+            <textarea value={data?.notes || ''} onChange={(e) => updateField('notes', e.target.value)} className="w-full h-28 resize-none bg-transparent text-sm focus:outline-none" placeholder="Hipoteses, aprendizados, objeções e ideias..." />
+          </div>
+        </section>
+        <aside className="rounded-xl border border-line bg-sidebar p-4 flex flex-col min-h-[420px]">
+          <label className="text-[10px] uppercase tracking-widest font-bold text-accent mb-4 block">Checklist de lancamento</label>
+          <div className="space-y-3 flex-1 overflow-y-auto">
+            {checklist.map((item: any) => (
+              <div key={item.id} className="flex items-center gap-3 border-b border-line pb-3 group">
+                <button type="button" onClick={() => updateChecklist((items) => items.map((current) => current.id === item.id ? { ...current, completed: !current.completed } : current))} className={cn("w-5 h-5 rounded border-2 border-accent shrink-0", item.completed && "bg-accent")} />
+                <input value={item.text} onChange={(e) => updateChecklist((items) => items.map((current) => current.id === item.id ? { ...current, text: e.target.value } : current))} className={cn("min-w-0 flex-1 bg-transparent text-sm focus:outline-none", item.completed && "line-through opacity-50")} />
+                <button type="button" onClick={() => updateChecklist((items) => items.filter((current) => current.id !== item.id))} className="p-2 text-red-800/70 hover:text-red-800 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+          <form onSubmit={addChecklistItem} className="flex gap-2 pt-4 border-t border-line mt-4">
+            <input value={newItem} onChange={(e) => setNewItem(e.target.value)} placeholder="Nova etapa" className="min-w-0 flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+            <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-2">Add</button>
+          </form>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function MonthlyCalendarView({ plannerId, userId, title, subtitle, storagePrefix, whatKey }: any) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [focusedDayKey, setFocusedDayKey] = useState('');
@@ -1272,10 +1698,10 @@ const PLANNER_CONFIGS: Record<string, any> = {
   'small-business-os': {
     bundleName: 'bundle_creator',
     tabs: [
-      { id: 'kanban', label: 'Sprint', icon: Briefcase, color: '#94a3b8', component: TableDataView, props: { title: "Sprint Kanban", subtitle: "Tarefas do Negócio", storagePrefix: "biz_tasks", columnHeaders: ["col_project", "col_status"], whatKey: 'biz_tasks_what', howKey: 'biz_tasks_how', emptyIcon: ClipboardList, emptyExamples: [['proj_1', 'stat_progress'], ['proj_2', 'stat_pending']] } },
-      { id: 'cashflow', label: 'Fluxo', icon: Receipt, color: '#10b981', component: TableDataView, props: { title: "Fluxo de Caixa", subtitle: "Financeiro", storagePrefix: "biz_cash", columnHeaders: ["col_desc", "col_amount"], whatKey: 'biz_cash_what', howKey: 'biz_cash_how', emptyIcon: Receipt, emptyExamples: [['biz_cash_ex1', 'biz_cash_ex1_val'], ['biz_cash_ex2', 'biz_cash_ex2_val']] } },
-      { id: 'clients', label: 'Clientes', icon: Briefcase, color: '#6366f1', component: TableDataView, props: { title: "CRM / Clientes", subtitle: "Contatos e Status", storagePrefix: "biz_crm", columnHeaders: ["col_project", "col_status"], whatKey: 'biz_crm_what', howKey: 'biz_crm_how', emptyIcon: Briefcase, emptyExamples: [['biz_crm_ex1', 'biz_crm_ex1_val'], ['biz_crm_ex2', 'biz_crm_ex2_val']] } },
-      { id: 'brainstorm', label: 'Lançamentos', icon: Sparkles, color: '#0ea5e9', component: TextAreaView, props: { title: "Brainstorm Estratégico", subtitle: "Novos Produtos", storagePrefix: "biz_launch", whatKey: 'biz_launch_what', howKey: 'biz_launch_how', placeholder: 'placeholder_ideas', emptyPrompts: ['prompt_launch_1', 'prompt_launch_2', 'prompt_launch_3'] } }
+      { id: 'kanban', label: 'Sprint', icon: ClipboardList, color: '#94a3b8', component: BusinessKanbanView, props: { title: "Sprint Kanban", subtitle: "Projetos, tarefas e entrega", storagePrefix: "biz_tasks", whatKey: 'biz_tasks_what' } },
+      { id: 'cashflow', label: 'Fluxo', icon: Receipt, color: '#10b981', component: BusinessCashflowView, props: { title: "Fluxo de Caixa", subtitle: "Entradas, saídas e meta", storagePrefix: "biz_cash", whatKey: 'biz_cash_what' } },
+      { id: 'clients', label: 'Clientes', icon: Briefcase, color: '#6366f1', component: BusinessCrmView, props: { title: "CRM / Clientes", subtitle: "Pipeline e próximos passos", storagePrefix: "biz_crm", whatKey: 'biz_crm_what' } },
+      { id: 'brainstorm', label: 'Lançamentos', icon: Sparkles, color: '#0ea5e9', component: BusinessLaunchView, props: { title: "Plano de Lançamento", subtitle: "Oferta, canais e execução", storagePrefix: "biz_launch", whatKey: 'biz_launch_what' } }
     ]
   },
   'undated-digital-planner': {

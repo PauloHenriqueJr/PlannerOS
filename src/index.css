@@ -40,6 +40,17 @@ body {
   transition: background-color 0.5s ease, color 0.5s ease;
 }
 
+.planner-content input,
+.planner-content select,
+.planner-content textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.planner-content textarea {
+  overflow-wrap: anywhere;
+}
+
 html:not(.dark) .planner-active-tab {
   background: linear-gradient(180deg, color-mix(in srgb, var(--tab-color) 82%, white), color-mix(in srgb, var(--tab-color) 55%, white));
   border-color: color-mix(in srgb, var(--tab-color) 54%, var(--border-line));

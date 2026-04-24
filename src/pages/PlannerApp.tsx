@@ -34,6 +34,10 @@ interface Task {
   completed: boolean;
 }
 
+const compactInputClass = "min-w-0 w-full bg-sidebar border border-line rounded px-2 py-1.5 text-[11px] focus:outline-none focus:border-accent";
+const compactPaperInputClass = "min-w-0 w-full bg-paper border border-line rounded px-2 py-1.5 text-[11px] focus:outline-none focus:border-accent";
+const subtleLineInputClass = "min-w-0 w-full bg-transparent border-b border-line py-1 text-[11px] focus:outline-none focus:border-accent";
+
 // --- Reusable Views ---
 
 function TaskView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, howKey, emptyExamples, emptyIcon, selectedDate = new Date() }: any) {
@@ -796,7 +800,7 @@ function BusinessKanbanView({ plannerId, title, subtitle, storagePrefix, whatKey
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
       <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
-      <div className="grid lg:grid-cols-[260px_1fr] gap-6 flex-1 min-h-0">
+      <div className="grid xl:grid-cols-[260px_1fr] gap-6 flex-1 min-h-0">
         <aside className="border border-line bg-sidebar rounded-xl p-4 flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-4">
             <label className="text-[10px] uppercase tracking-widest font-bold text-accent">Projetos</label>
@@ -830,30 +834,30 @@ function BusinessKanbanView({ plannerId, title, subtitle, storagePrefix, whatKey
                 <button type="button" onClick={() => removeProject(selectedProject.id)} className="px-3 py-2 text-red-800/70 hover:text-red-800" title={t('del_btn')}><Trash2 size={16} /></button>
                 <input value={selectedProject.goal || ''} onChange={(e) => updateProject(selectedProject.id, { goal: e.target.value })} placeholder="Meta do projeto" className="md:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
               </div>
-              <form onSubmit={addTask} className="flex gap-3 mb-5">
-                <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Nova tarefa dentro deste projeto" className="flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
-                <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-3">{t('add_btn')}</button>
+              <form onSubmit={addTask} className="flex flex-col sm:flex-row gap-3 mb-5">
+                <input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Nova tarefa dentro deste projeto" className="min-w-0 flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+                <button className="self-start sm:self-auto text-[10px] uppercase tracking-widest font-bold text-accent px-3 py-2">{t('add_btn')}</button>
               </form>
-              <div className="grid xl:grid-cols-4 md:grid-cols-2 gap-4 overflow-auto pb-4">
+              <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 snap-x">
                 {stages.map((stage) => (
-                  <div key={stage.id} className="rounded-xl border border-line bg-sidebar/70 p-3 min-h-[320px]">
+                  <div key={stage.id} className="shrink-0 w-[min(82vw,320px)] lg:w-[300px] rounded-xl border border-line bg-sidebar/70 p-3 min-h-[320px] snap-start">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-[10px] uppercase tracking-widest font-bold text-accent">{stage.label}</h3>
                       <span className="text-xs text-ink/45">{(selectedProject.tasks || []).filter((task: any) => task.stage === stage.id).length}</span>
                     </div>
                     <div className="space-y-3">
                       {(selectedProject.tasks || []).filter((task: any) => task.stage === stage.id).map((task: any) => (
-                        <div key={task.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm">
+                        <div key={task.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm min-w-0">
                           <input value={task.title} onChange={(e) => updateTask(selectedProject.id, task.id, { title: e.target.value })} className="w-full bg-transparent text-sm font-medium text-ink focus:outline-none border-b border-transparent focus:border-accent pb-1" />
                           <div className="grid grid-cols-2 gap-2 mt-3">
-                            <input value={task.owner || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { owner: e.target.value })} placeholder="Responsavel" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                            <input value={task.due || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { due: e.target.value })} placeholder="Prazo" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                            <select value={task.priority || 'Media'} onChange={(e) => updateTask(selectedProject.id, task.id, { priority: e.target.value })} className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent">
+                            <input value={task.owner || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { owner: e.target.value })} placeholder="Responsavel" className={compactInputClass} />
+                            <input value={task.due || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { due: e.target.value })} placeholder="Prazo" className={compactInputClass} />
+                            <select value={task.priority || 'Media'} onChange={(e) => updateTask(selectedProject.id, task.id, { priority: e.target.value })} className={compactInputClass}>
                               <option>Alta</option>
                               <option>Media</option>
                               <option>Baixa</option>
                             </select>
-                            <input value={task.blocker || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { blocker: e.target.value })} placeholder="Bloqueio" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                            <input value={task.blocker || ''} onChange={(e) => updateTask(selectedProject.id, task.id, { blocker: e.target.value })} placeholder="Bloqueio" className={compactInputClass} />
                           </div>
                           <div className="flex items-center justify-between mt-3">
                             <select value={task.stage} onChange={(e) => updateTask(selectedProject.id, task.id, { stage: e.target.value, completed: e.target.value === 'done' })} className="bg-transparent text-xs text-accent font-bold outline-none">
@@ -926,7 +930,7 @@ function BusinessCashflowView({ plannerId, title, subtitle, storagePrefix, whatK
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
       <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
-      <div className="grid md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         {[
           ['Entradas', income],
           ['Saidas', expense],
@@ -942,13 +946,13 @@ function BusinessCashflowView({ plannerId, title, subtitle, storagePrefix, whatK
           <input value={data?.target || ''} onChange={(e) => setData((prev: any) => ({ ...(prev || {}), target: e.target.value }))} className="w-full bg-transparent font-serif italic text-3xl focus:outline-none border-b border-line focus:border-accent" />
         </div>
       </div>
-      <form onSubmit={addRecord} className="grid md:grid-cols-[1fr_120px_120px_120px_120px_auto] gap-3 mb-6">
+      <form onSubmit={addRecord} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1fr_120px_120px_120px_120px_auto] gap-3 mb-6">
         <input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Descricao" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
         <input value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} placeholder="Valor" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
         <select value={draft.type} onChange={(e) => setDraft({ ...draft, type: e.target.value })} className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent"><option value="income">Entrada</option><option value="expense">Saida</option></select>
         <select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })} className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent"><option value="planned">Previsto</option><option value="paid">Pago</option></select>
         <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder="Data" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
-        <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-2">{t('add_btn')}</button>
+        <button className="justify-self-start xl:justify-self-auto text-[10px] uppercase tracking-widest font-bold text-accent px-2 py-2">{t('add_btn')}</button>
       </form>
       <div className="flex-1 overflow-auto rounded-xl border border-line bg-sidebar">
         <table className="w-full text-left min-w-[760px]">
@@ -1019,7 +1023,7 @@ function BusinessCrmView({ plannerId, title, subtitle, storagePrefix, whatKey }:
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
       <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
-      <div className="grid sm:grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
         <div className="rounded-xl border border-line bg-sidebar p-4">
           <p className="text-[10px] uppercase tracking-widest font-bold text-accent mb-1">Leads</p>
           <p className="font-serif italic text-3xl">{clients.length}</p>
@@ -1037,46 +1041,46 @@ function BusinessCrmView({ plannerId, title, subtitle, storagePrefix, whatKey }:
           <p className="font-serif italic text-3xl">{clients.filter((client: any) => client.stage === 'Cliente').length}</p>
         </div>
       </div>
-      <form onSubmit={addClient} className="flex gap-3 mb-5">
-        <input value={newClient} onChange={(e) => setNewClient(e.target.value)} placeholder="Novo lead ou cliente" className="flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
-        <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-3">{t('add_btn')}</button>
+      <form onSubmit={addClient} className="flex flex-col sm:flex-row gap-3 mb-5">
+        <input value={newClient} onChange={(e) => setNewClient(e.target.value)} placeholder="Novo lead ou cliente" className="min-w-0 flex-1 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+        <button className="self-start sm:self-auto text-[10px] uppercase tracking-widest font-bold text-accent px-3 py-2">{t('add_btn')}</button>
       </form>
-      <div className="grid xl:grid-cols-6 md:grid-cols-2 gap-4 overflow-auto pb-4">
+      <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 snap-x">
         {stages.map((stage) => (
-          <section key={stage} className="rounded-xl border border-line bg-sidebar/70 p-3 min-h-[360px]">
+          <section key={stage} className="shrink-0 w-[min(84vw,340px)] lg:w-[320px] rounded-xl border border-line bg-sidebar/70 p-3 min-h-[360px] snap-start">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-[10px] uppercase tracking-widest font-bold text-accent">{stage}</h3>
               <span className="text-xs text-ink/45">{clients.filter((client: any) => client.stage === stage).length}</span>
             </div>
             <div className="space-y-3">
               {clients.filter((client: any) => client.stage === stage).map((client: any) => (
-                <div key={client.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm space-y-2">
-                  <input value={client.name} onChange={(e) => updateClient(client.id, { name: e.target.value })} className="w-full bg-transparent font-serif italic text-xl focus:outline-none border-b border-transparent focus:border-accent" />
+                <div key={client.id} className="rounded-lg border border-line bg-paper p-3 shadow-sm space-y-2 min-w-0">
+                  <input value={client.name} onChange={(e) => updateClient(client.id, { name: e.target.value })} className="min-w-0 w-full bg-transparent font-serif italic text-lg leading-tight focus:outline-none border-b border-transparent focus:border-accent" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={client.contact || ''} onChange={(e) => updateClient(client.id, { contact: e.target.value })} placeholder="Contato" className="bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
-                    <input value={client.source || ''} onChange={(e) => updateClient(client.id, { source: e.target.value })} placeholder="Origem" className="bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
+                    <input value={client.contact || ''} onChange={(e) => updateClient(client.id, { contact: e.target.value })} placeholder="Contato" className={subtleLineInputClass} />
+                    <input value={client.source || ''} onChange={(e) => updateClient(client.id, { source: e.target.value })} placeholder="Origem" className={subtleLineInputClass} />
                   </div>
-                  <input value={client.persona || ''} onChange={(e) => updateClient(client.id, { persona: e.target.value })} placeholder="Persona / segmento" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
-                  <input value={client.pain || ''} onChange={(e) => updateClient(client.id, { pain: e.target.value })} placeholder="Dor principal" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
-                  <input value={client.interest || ''} onChange={(e) => updateClient(client.id, { interest: e.target.value })} placeholder="Planner/interesse" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
-                  <input value={client.nextAction || ''} onChange={(e) => updateClient(client.id, { nextAction: e.target.value })} placeholder="Proxima acao" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
+                  <input value={client.persona || ''} onChange={(e) => updateClient(client.id, { persona: e.target.value })} placeholder="Persona / segmento" className={subtleLineInputClass} />
+                  <input value={client.pain || ''} onChange={(e) => updateClient(client.id, { pain: e.target.value })} placeholder="Dor principal" className={subtleLineInputClass} />
+                  <input value={client.interest || ''} onChange={(e) => updateClient(client.id, { interest: e.target.value })} placeholder="Planner/interesse" className={subtleLineInputClass} />
+                  <input value={client.nextAction || ''} onChange={(e) => updateClient(client.id, { nextAction: e.target.value })} placeholder="Proxima acao" className={subtleLineInputClass} />
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={client.lastTouch || ''} onChange={(e) => updateClient(client.id, { lastTouch: e.target.value })} placeholder="Ultimo toque" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                    <input value={client.followUpDate || ''} onChange={(e) => updateClient(client.id, { followUpDate: e.target.value })} placeholder="Follow-up" className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                    <input value={client.lastTouch || ''} onChange={(e) => updateClient(client.id, { lastTouch: e.target.value })} placeholder="Ultimo toque" className={compactInputClass} />
+                    <input value={client.followUpDate || ''} onChange={(e) => updateClient(client.id, { followUpDate: e.target.value })} placeholder="Follow-up" className={compactInputClass} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <input value={client.value || ''} onChange={(e) => updateClient(client.id, { value: e.target.value })} placeholder="Valor" className="min-w-0 flex-1 bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                    <select value={client.temperature || 'Morno'} onChange={(e) => updateClient(client.id, { temperature: e.target.value })} className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent">
+                    <input value={client.value || ''} onChange={(e) => updateClient(client.id, { value: e.target.value })} placeholder="Valor" className={compactInputClass} />
+                    <select value={client.temperature || 'Morno'} onChange={(e) => updateClient(client.id, { temperature: e.target.value })} className={compactInputClass}>
                       {temperatures.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                   </div>
-                  <div className="flex gap-2">
-                    <select value={client.stage} onChange={(e) => updateClient(client.id, { stage: e.target.value })} className="bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent">
+                  <div className="flex gap-2 min-w-0">
+                    <select value={client.stage} onChange={(e) => updateClient(client.id, { stage: e.target.value })} className={compactInputClass}>
                       {stages.map((item) => <option key={item} value={item}>{item}</option>)}
                     </select>
                   </div>
-                  <input value={client.objection || ''} onChange={(e) => updateClient(client.id, { objection: e.target.value })} placeholder="Objeção / dúvida" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
-                  <textarea value={client.notes || ''} onChange={(e) => updateClient(client.id, { notes: e.target.value })} placeholder="Notas" className="w-full min-h-16 bg-sidebar border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent resize-none" />
+                  <input value={client.objection || ''} onChange={(e) => updateClient(client.id, { objection: e.target.value })} placeholder="Objeção / dúvida" className={subtleLineInputClass} />
+                  <textarea value={client.notes || ''} onChange={(e) => updateClient(client.id, { notes: e.target.value })} placeholder="Notas" className="min-w-0 w-full min-h-16 bg-sidebar border border-line rounded px-2 py-1.5 text-[11px] focus:outline-none focus:border-accent resize-none" />
                   <div className="flex justify-end"><button type="button" onClick={() => removeClient(client.id)} className="p-2 text-red-800/70 hover:text-red-800"><Trash2 size={14} /></button></div>
                 </div>
               ))}
@@ -1114,7 +1118,7 @@ function BusinessCampaignView({ plannerId, title, subtitle, storagePrefix, whatK
   return (
     <div className={cn("animate-in fade-in duration-500 h-full flex flex-col", isSyncing && "opacity-70")}>
       <ViewHeader title={title} subtitle={subtitle} descriptionKey={whatKey} />
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6 flex-1 min-h-0">
+      <div className="grid xl:grid-cols-[320px_1fr] gap-6 flex-1 min-h-0">
         <aside className="rounded-xl border border-line bg-sidebar p-4 space-y-4">
           <div>
             <label className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2 block">Ângulo da campanha</label>
@@ -1124,7 +1128,7 @@ function BusinessCampaignView({ plannerId, title, subtitle, storagePrefix, whatK
             <label className="text-[10px] uppercase tracking-widest font-bold text-accent mb-2 block">Promessa curta</label>
             <textarea value={data?.promise || ''} onChange={(e) => updateField('promise', e.target.value)} className="w-full min-h-24 bg-paper border border-line rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-accent" placeholder="Ex: do caos ao plano de venda em 20 minutos." />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3 gap-2">
             {statuses.map((status) => (
               <div key={status} className="rounded-lg border border-line bg-paper p-2 text-center">
                 <div className="text-lg font-serif italic">{assets.filter((asset: any) => asset.status === status).length}</div>
@@ -1134,7 +1138,7 @@ function BusinessCampaignView({ plannerId, title, subtitle, storagePrefix, whatK
           </div>
         </aside>
         <section className="min-w-0 flex flex-col min-h-0">
-          <form onSubmit={addAsset} className="grid md:grid-cols-[1fr_110px_110px_120px_110px_auto] gap-3 mb-5">
+          <form onSubmit={addAsset} className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-[1fr_110px_110px_120px_110px_auto] gap-3 mb-5">
             <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Peça de conteúdo" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
             <input value={draft.channel} onChange={(e) => setDraft({ ...draft, channel: e.target.value })} placeholder="Canal" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
             <input value={draft.format} onChange={(e) => setDraft({ ...draft, format: e.target.value })} placeholder="Formato" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
@@ -1142,24 +1146,24 @@ function BusinessCampaignView({ plannerId, title, subtitle, storagePrefix, whatK
               {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
             <input value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} placeholder="Data" className="bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
-            <button className="text-[10px] uppercase tracking-widest font-bold text-accent px-2">{t('add_btn')}</button>
-            <input value={draft.hook} onChange={(e) => setDraft({ ...draft, hook: e.target.value })} placeholder="Hook" className="md:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
-            <input value={draft.cta} onChange={(e) => setDraft({ ...draft, cta: e.target.value })} placeholder="CTA" className="md:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+            <button className="justify-self-start 2xl:justify-self-auto text-[10px] uppercase tracking-widest font-bold text-accent px-2 py-2">{t('add_btn')}</button>
+            <input value={draft.hook} onChange={(e) => setDraft({ ...draft, hook: e.target.value })} placeholder="Hook" className="sm:col-span-2 2xl:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
+            <input value={draft.cta} onChange={(e) => setDraft({ ...draft, cta: e.target.value })} placeholder="CTA" className="sm:col-span-2 2xl:col-span-3 bg-transparent border-b border-line py-2 text-sm focus:outline-none focus:border-accent" />
           </form>
-          <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-4 overflow-auto pb-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-4 overflow-auto pb-4">
             {assets.map((asset: any) => (
-              <div key={asset.id} className="rounded-xl border border-line bg-sidebar p-4 space-y-2">
-                <input value={asset.title || ''} onChange={(e) => updateAsset(asset.id, { title: e.target.value })} className="w-full bg-transparent font-serif italic text-xl focus:outline-none border-b border-transparent focus:border-accent" />
+              <div key={asset.id} className="rounded-xl border border-line bg-sidebar p-4 space-y-2 min-w-0">
+                <input value={asset.title || ''} onChange={(e) => updateAsset(asset.id, { title: e.target.value })} className="min-w-0 w-full bg-transparent font-serif italic text-xl focus:outline-none border-b border-transparent focus:border-accent" />
                 <div className="grid grid-cols-2 gap-2">
-                  <input value={asset.channel || ''} onChange={(e) => updateAsset(asset.id, { channel: e.target.value })} className="bg-paper border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                  <input value={asset.format || ''} onChange={(e) => updateAsset(asset.id, { format: e.target.value })} className="bg-paper border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
-                  <select value={asset.status || 'Ideia'} onChange={(e) => updateAsset(asset.id, { status: e.target.value })} className="bg-paper border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent">
+                  <input value={asset.channel || ''} onChange={(e) => updateAsset(asset.id, { channel: e.target.value })} className={compactPaperInputClass} />
+                  <input value={asset.format || ''} onChange={(e) => updateAsset(asset.id, { format: e.target.value })} className={compactPaperInputClass} />
+                  <select value={asset.status || 'Ideia'} onChange={(e) => updateAsset(asset.id, { status: e.target.value })} className={compactPaperInputClass}>
                     {statuses.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
-                  <input value={asset.date || ''} onChange={(e) => updateAsset(asset.id, { date: e.target.value })} placeholder="Data" className="bg-paper border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent" />
+                  <input value={asset.date || ''} onChange={(e) => updateAsset(asset.id, { date: e.target.value })} placeholder="Data" className={compactPaperInputClass} />
                 </div>
-                <textarea value={asset.hook || ''} onChange={(e) => updateAsset(asset.id, { hook: e.target.value })} placeholder="Hook" className="w-full min-h-16 bg-paper border border-line rounded px-2 py-1.5 text-xs focus:outline-none focus:border-accent resize-none" />
-                <input value={asset.cta || ''} onChange={(e) => updateAsset(asset.id, { cta: e.target.value })} placeholder="CTA" className="w-full bg-transparent border-b border-line py-1 text-xs focus:outline-none focus:border-accent" />
+                <textarea value={asset.hook || ''} onChange={(e) => updateAsset(asset.id, { hook: e.target.value })} placeholder="Hook" className="min-w-0 w-full min-h-16 bg-paper border border-line rounded px-2 py-1.5 text-[11px] focus:outline-none focus:border-accent resize-none" />
+                <input value={asset.cta || ''} onChange={(e) => updateAsset(asset.id, { cta: e.target.value })} placeholder="CTA" className={subtleLineInputClass} />
                 <div className="flex justify-end"><button type="button" onClick={() => removeAsset(asset.id)} className="p-2 text-red-800/70 hover:text-red-800"><Trash2 size={14} /></button></div>
               </div>
             ))}

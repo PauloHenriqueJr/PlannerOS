@@ -60,6 +60,6 @@ Required in `.env` (or `.env.local`):
 - `GEMINI_API_KEY` — exposed to frontend via Vite's `define`
 - `STRIPE_SECRET_KEY` — server-side only
 - `STRIPE_WEBHOOK_SECRET` — server-side only
-- `HOTMART_HOTTTOk` — server-side only (note the typo in the env key)
+- `HOTMART_HOTTOK` — server-side only, optional unless Hotmart webhooks are enabled
 
-Firebase credentials for Admin SDK: set `GOOGLE_APPLICATION_CREDENTIALS` or place `service_account.json` in root. Firebase init failure is silently caught (webhook grant won't work without it).
+Firebase credentials for Admin SDK: set `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_BASE64`, or place `service_account.json` in root. Production boot fails without credentials because webhooks must grant access.

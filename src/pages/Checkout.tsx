@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth, usePurchases } from '../store';
 import { useState } from 'react';
@@ -6,9 +6,8 @@ import { auth } from '../firebase';
 
 export default function Checkout() {
   const { productId } = useParams();
-  const navigate = useNavigate();
   const { user } = useAuth();
-  const { products } = usePurchases();
+  const { products, isLoadingProducts } = usePurchases();
   const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,13 +24,19 @@ export default function Checkout() {
   };
 
   if (!user) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isLoadingProducts) {
+    return (
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
+        <div className="font-serif italic text-2xl text-ink/50">{t('checkout_loading')}</div>
+      </div>
+    );
   }
 
   if (!isPro && !product) {
-    navigate('/');
-    return null;
+    return <Navigate to="/" replace />;
   }
 
   const handlePay = async () => {
@@ -140,7 +145,6 @@ export default function Checkout() {
                   <span className="text-xs uppercase tracking-widest font-bold opacity-70">{t('total')}</span>
                   <span className="font-serif text-2xl italic font-bold text-accent">
                     {formatPrice(usdPrice, brlPrice)} 
-                    {isPro && <span className="text-sm ml-1">/ {isPt ? 'mês' : 'mo'}</span>}
                   </span>
                 </div>
             </div>

@@ -5,7 +5,7 @@ import {
   signOut,
   User as FirebaseUser
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
 
 interface ThemeContextType {
@@ -209,6 +209,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
           setPurchasedIds([]);
         }
+
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          const response = await fetch('/api/access/sync-hotmart', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (Array.isArray(result.granted) && result.granted.length > 0) {
+              setPurchasedIds((current) => Array.from(new Set([...current, ...result.granted])));
+            }
+          }
+        } catch (error) {
+          console.warn('Unable to sync pending purchases:', error);
+        }
         
         setUser(profileData);
       } else {
@@ -220,6 +239,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const userRef = doc(db, 'users', user.id);
+    return onSnapshot(userRef, (snapshot) => {
+      if (!snapshot.exists()) return;
+      const data = snapshot.data();
+      setPurchasedIds(Array.isArray(data.purchasedPlanners) ? data.purchasedPlanners : []);
+      setUser((current) => current ? {
+        ...current,
+        name: data.name || current.name,
+        subscriptionStatus: data.subscriptionStatus,
+      } : current);
+    }, (error) => {
+      console.warn('Unable to listen for purchase updates:', error);
+    });
+  }, [user?.id]);
 
   const login = async () => {
     try {

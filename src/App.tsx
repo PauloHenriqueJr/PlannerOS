@@ -13,6 +13,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import PlannerApp from './pages/PlannerApp';
 import Checkout from './pages/Checkout';
+import LegalPage from './pages/Legal';
 
   function Header() {
     const { user, logout } = useAuth();
@@ -116,8 +117,9 @@ function Footer() {
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs opacity-60 text-ink">
         <div className="font-serif italic text-lg">PLANN.OS © {new Date().getFullYear()}</div>
         <div className="flex gap-6 uppercase tracking-widest font-bold">
-          <a href="#" className="hover:text-accent transition-colors">Termos de Uso</a>
-          <a href="#" className="hover:text-accent transition-colors">Privacidade</a>
+          <Link to="/terms" className="hover:text-accent transition-colors">{t('terms_link')}</Link>
+          <Link to="/privacy" className="hover:text-accent transition-colors">{t('privacy_link')}</Link>
+          <Link to="/refunds" className="hover:text-accent transition-colors">{t('refunds_link')}</Link>
           <a href="mailto:suporte@planneros.com" className="hover:text-accent transition-colors">Suporte</a>
         </div>
       </div>
@@ -138,6 +140,9 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/planner/:id" element={<PlannerApp />} />
               <Route path="/checkout/:productId" element={<Checkout />} />
+              <Route path="/terms" element={<LegalPage type="terms" />} />
+              <Route path="/privacy" element={<LegalPage type="privacy" />} />
+              <Route path="/refunds" element={<LegalPage type="refunds" />} />
             </Routes>
             <Footer />
           </main>

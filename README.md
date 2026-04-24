@@ -1,20 +1,56 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# PlannerOS
 
-# Run and deploy your AI Studio app
+Cloud-based digital planners with Firebase Auth, Firestore sync, Stripe checkout, and optional Hotmart webhooks.
 
-This contains everything you need to run your app locally.
+## Commands
 
-View your app in AI Studio: https://ai.studio/apps/080cf906-17e2-4a53-8769-8407f39f60e8
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+npm run check:prod-env
+npm start
+```
 
-## Run Locally
+`npm run dev` starts the Express + Vite app on `http://localhost:3000`.
 
-**Prerequisites:**  Node.js
+## Production Checklist
 
+Required environment variables:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+NODE_ENV=production
+APP_URL=https://your-domain.com
+PORT=3000
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+FIREBASE_SERVICE_ACCOUNT_BASE64=...
+FIRESTORE_DATABASE_ID=ai-studio-080cf906-17e2-4a53-8769-8407f39f60e8
+```
+
+Optional Hotmart support:
+
+```bash
+HOTMART_HOTTOK=...
+```
+
+Firebase Admin credentials are required in production because payment webhooks grant planner access in Firestore.
+
+## Payment Flow
+
+- Stripe checkout is created by `POST /api/checkout/stripe`.
+- Stripe webhook `POST /api/webhooks/stripe` grants access with `purchasedPlanners`.
+- Hotmart webhook `POST /api/webhooks/hotmart` grants access by buyer email.
+- If a Hotmart buyer has not created an account yet, the purchase is stored in `pending_hotmart_purchases`.
+- After Google login, the app calls `POST /api/access/sync-hotmart` to claim pending Hotmart purchases.
+
+## Firestore
+
+Client writes are restricted to the authenticated user's profile and planner data. Product catalog writes are server/admin only.
+
+Deploy Firestore rules:
+
+```bash
+firebase deploy --only firestore --project gen-lang-client-0779193048
+```

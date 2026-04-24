@@ -8,6 +8,12 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import "dotenv/config";
 
+const FIRESTORE_DATABASE_ID = process.env.FIRESTORE_DATABASE_ID || "ai-studio-080cf906-17e2-4a53-8769-8407f39f60e8";
+
+function getAdminDb() {
+  return getFirestore(FIRESTORE_DATABASE_ID);
+}
+
 function getFirebaseAdminConfig() {
   const fallbackProjectId = "gen-lang-client-0779193048";
   const jsonSecret = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -38,7 +44,7 @@ function getFirebaseAdminConfig() {
 }
 
 function validateRequiredEnvVars() {
-  const required = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'HOTMART_HOTTOK'];
+  const required = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length > 0) {
     console.error(`[Boot] FATAL: Missing required env vars: ${missing.join(', ')}`);
@@ -50,6 +56,10 @@ try {
   const config = getFirebaseAdminConfig();
   initializeApp(config);
   if (!('credential' in config)) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("[Boot] FATAL: Firebase Admin credentials are required in production.");
+      process.exit(1);
+    }
     console.warn("[Boot] WARNING: Firebase Admin running WITHOUT credentials. Webhook DB writes will fail.");
   } else {
     console.log("Firebase Admin initialized with credentials.");
@@ -167,7 +177,7 @@ function getBearerToken(req: express.Request) {
 }
 
 async function resolveProductId(externalId: string): Promise<string> {
-  const db = getFirestore();
+  const db = getAdminDb();
   try {
     const mappingRef = db.collection("product_mappings").doc(String(externalId));
     const mappingDoc = await mappingRef.get();
@@ -184,7 +194,7 @@ async function resolveProductId(externalId: string): Promise<string> {
 }
 
 async function autoSeedProducts() {
-  const db = getFirestore();
+  const db = getAdminDb();
   const productsRef = db.collection("products");
   
   try {
@@ -207,6 +217,71 @@ async function autoSeedProducts() {
   } catch (error: any) {
     console.error("[AutoSeed Error]:", error.message);
   }
+}
+
+function getAppUrl(req: express.Request) {
+  const configuredUrl = process.env.APP_URL?.replace(/\/$/, "");
+  if (configuredUrl) return configuredUrl;
+  return String(req.headers.origin || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
+}
+
+async function grantPlannerAccess(userId: string, productId: string) {
+  const db = getAdminDb();
+  const userRef = db.collection("users").doc(userId);
+  await userRef.set({
+    purchasedPlanners: FieldValue.arrayUnion(productId)
+  }, { merge: true });
+}
+
+function normalizeEmail(email: unknown) {
+  return typeof email === "string" ? email.trim().toLowerCase() : "";
+}
+
+function getHotmartEventId(payload: any) {
+  return String(
+    payload?.id ||
+    payload?.event_id ||
+    payload?.data?.purchase?.transaction ||
+    payload?.data?.transaction ||
+    `${payload?.event || "unknown"}_${payload?.data?.buyer?.email || "no-email"}_${payload?.data?.product?.id || "no-product"}`
+  ).replace(/[\/?#]/g, "_");
+}
+
+async function grantPendingHotmartPurchases(userId: string, email: string) {
+  const db = getAdminDb();
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return [];
+
+  const snapshot = await db
+    .collection("pending_hotmart_purchases")
+    .where("email", "==", normalizedEmail)
+    .where("status", "==", "pending")
+    .get();
+
+  const granted: string[] = [];
+  const batch = db.batch();
+
+  snapshot.docs.forEach((purchaseDoc) => {
+    const productId = purchaseDoc.data()?.productId;
+    if (typeof productId === "string" && productId) {
+      granted.push(productId);
+    }
+    batch.set(purchaseDoc.ref, {
+      status: "claimed",
+      claimedBy: userId,
+      claimedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+
+  if (granted.length > 0) {
+    const userRef = db.collection("users").doc(userId);
+    batch.set(userRef, {
+      purchasedPlanners: FieldValue.arrayUnion(...granted)
+    }, { merge: true });
+    await batch.commit();
+  }
+
+  return granted;
 }
 
 async function startServer() {
@@ -250,7 +325,7 @@ async function startServer() {
       }
 
       // Idempotency: skip if already processed
-      const db = getFirestore();
+      const db = getAdminDb();
       const eventRef = db.collection("processed_webhook_events").doc(event.id);
       const alreadyProcessed = await eventRef.get();
       if (alreadyProcessed.exists) {
@@ -269,10 +344,7 @@ async function startServer() {
         }
 
         try {
-          const userRef = db.collection("users").doc(userId);
-          await userRef.set({
-            purchasedPlanners: FieldValue.arrayUnion(productId)
-          }, { merge: true });
+          await grantPlannerAccess(userId, productId);
           await eventRef.set({ processedAt: FieldValue.serverTimestamp(), type: event.type });
           console.log(`Granted access to ${productId} for user ${userId}`);
         } catch (dbError: any) {
@@ -289,28 +361,17 @@ async function startServer() {
   // Parse JSON for other routes
   app.use(express.json());
 
-async function resolveProductId(externalId: string): Promise<string> {
-  const db = getFirestore();
-  try {
-    const mappingRef = db.collection("product_mappings").doc(String(externalId));
-    const mappingDoc = await mappingRef.get();
-    
-    if (mappingDoc.exists) {
-      const internalId = mappingDoc.data()?.plannerId;
-      console.log(`[Mapping] Resolved ${externalId} to ${internalId}`);
-      return internalId || externalId;
-    }
-  } catch (e) {
-    console.error("[Mapping Error]", e);
-  }
-  return externalId;
-}
-
 // Webhook for Hotmart (usually JSON payload, verify Hotmart token)
 app.post("/api/webhooks/hotmart", async (req, res) => {
+  const configuredHottok = process.env.HOTMART_HOTTOK;
   const hotmartToken = req.headers['x-hotmart-hottok'];
 
-  if (!hotmartToken || hotmartToken !== process.env.HOTMART_HOTTOK) {
+  if (!configuredHottok) {
+    console.warn("Hotmart webhook received but HOTMART_HOTTOK is not configured.");
+    return res.status(503).send("Hotmart not configured");
+  }
+
+  if (!hotmartToken || hotmartToken !== configuredHottok) {
     console.warn("Unauthorized: Invalid or missing Hotmart Token");
     return res.status(401).send("Unauthorized: Invalid Hottok");
   }
@@ -321,11 +382,18 @@ app.post("/api/webhooks/hotmart", async (req, res) => {
     return res.status(400).send("Bad Request: Missing data");
   }
 
-  const buyerEmail = data.buyer.email.toLowerCase();
+  const buyerEmail = normalizeEmail(data.buyer.email);
   const externalProductId = String(data.product.id);
-  const db = getFirestore();
+  const db = getAdminDb();
+  const eventId = getHotmartEventId(req.body);
+  const eventRef = db.collection("processed_webhook_events").doc(`hotmart_${eventId}`);
 
   try {
+    const alreadyProcessed = await eventRef.get();
+    if (alreadyProcessed.exists) {
+      return res.status(200).json({ status: "duplicate" });
+    }
+
     // RESOLVE: Map Hotmart numeric ID to our string ID (e.g. adhd-planner)
     const productId = await resolveProductId(externalProductId);
 
@@ -333,16 +401,25 @@ app.post("/api/webhooks/hotmart", async (req, res) => {
     const snapshot = await usersRef.where("email", "==", buyerEmail).get();
 
     if (snapshot.empty) {
-      console.warn(`No user found for email ${buyerEmail}. Sale might need manual sync.`);
-      return res.status(200).json({ status: "user_not_found" }); 
+      await db.collection("pending_hotmart_purchases").doc(eventId).set({
+        email: buyerEmail,
+        externalProductId,
+        productId,
+        event,
+        status: event === "PURCHASE_APPROVED" ? "pending" : "ignored",
+        createdAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+      await eventRef.set({ processedAt: FieldValue.serverTimestamp(), type: event });
+      console.warn(`No user found for email ${buyerEmail}. Stored pending Hotmart purchase.`);
+      return res.status(200).json({ status: "pending_user_signup" }); 
     }
 
     const userDoc = snapshot.docs[0];
 
     if (event === "PURCHASE_APPROVED") {
-      await userDoc.ref.update({
+      await userDoc.ref.set({
         purchasedPlanners: FieldValue.arrayUnion(productId)
-      });
+      }, { merge: true });
       console.log(`[Hotmart] Success: Granted access to ${productId} (from ${externalProductId}) for ${buyerEmail}`);
     } 
     else if (["PURCHASE_CANCELED", "PURCHASE_REFUNDED", "SUBSCRIPTION_CANCELLATION", "PURCHASE_CHARGEBACK"].includes(event)) {
@@ -352,6 +429,7 @@ app.post("/api/webhooks/hotmart", async (req, res) => {
       console.log(`[Hotmart] Revoked: Removed access to ${productId} for ${buyerEmail} due to ${event}`);
     }
 
+    await eventRef.set({ processedAt: FieldValue.serverTimestamp(), type: event });
     return res.status(200).json({ status: "success" });
   } catch (error: any) {
     console.error("[Hotmart Webhook Error]:", error.message);
@@ -359,109 +437,36 @@ app.post("/api/webhooks/hotmart", async (req, res) => {
   }
 });
 
-const PRODUCTS_TO_SEED = [
-  {
-    id: 'adhd-planner-2026',
-    nameKey: 'prod_adhd_name',
-    descKey: 'prod_adhd_desc',
-    priceUsd: 14.90,
-    priceBrl: 47.90,
-    image: 'https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_adhd_tag',
-    active: true,
-    order: 1
-  },
-  {
-    id: 'it-girl-wellness',
-    nameKey: 'prod_itgirl_name',
-    descKey: 'prod_itgirl_desc',
-    priceUsd: 12.90,
-    priceBrl: 37.90,
-    image: 'https://images.unsplash.com/photo-1615529182904-14819c35db37?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_itgirl_tag',
-    active: true,
-    order: 2
-  },
-  {
-    id: 'undated-digital-planner',
-    nameKey: 'prod_undated_name',
-    descKey: 'prod_undated_desc',
-    priceUsd: 14.90,
-    priceBrl: 47.90,
-    image: 'https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_undated_tag',
-    active: true,
-    order: 3
-  },
-  {
-    id: 'small-business-os',
-    nameKey: 'prod_smallbiz_name',
-    descKey: 'prod_smallbiz_desc',
-    priceUsd: 19.90,
-    priceBrl: 67.90,
-    image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_smallbiz_tag',
-    active: true,
-    order: 4
-  },
-  {
-    id: 'meal-prep-weekly',
-    nameKey: 'prod_meal_name',
-    descKey: 'prod_meal_desc',
-    priceUsd: 9.90,
-    priceBrl: 27.90,
-    image: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_meal_tag',
-    active: true,
-    order: 5
-  },
-  {
-    id: 'weight-loss-tracker',
-    nameKey: 'prod_weight_name',
-    descKey: 'prod_weight_desc',
-    priceUsd: 9.90,
-    priceBrl: 27.90,
-    image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&q=80',
-    tagKey: 'prod_weight_tag',
-    active: true,
-    order: 6
-  }
-];
-
-async function autoSeedProducts() {
-  const db = getFirestore();
-  const productsRef = db.collection("products");
-  
+app.post("/api/access/sync-hotmart", async (req, res) => {
   try {
-    const snapshot = await productsRef.limit(1).get();
-    if (snapshot.empty) {
-      console.log("[AutoSeed] Products collection is empty. Seeding initial products...");
-      const batch = db.batch();
-      
-      for (const p of PRODUCTS_TO_SEED) {
-        batch.set(productsRef.doc(p.id), {
-          ...p,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp()
-        });
-      }
-      
-      await batch.commit();
-      console.log("[AutoSeed] Successfully seeded initial products.");
+    const token = getBearerToken(req);
+    if (!token) {
+      return res.status(401).json({ error: "Authentication required." });
     }
+
+    const decodedToken = await getAuth().verifyIdToken(token);
+    const email = normalizeEmail(decodedToken.email);
+    if (!email) {
+      return res.status(400).json({ error: "Authenticated user has no email." });
+    }
+
+    const granted = await grantPendingHotmartPurchases(decodedToken.uid, email);
+    return res.json({ granted });
   } catch (error: any) {
-    console.error("[AutoSeed Error]:", error.message);
+    console.error("[Hotmart Sync Error]:", error.message);
+    return res.status(500).json({ error: "Unable to sync purchases." });
   }
-}
+});
 
 // Admin endpoint to seed current products to Firestore
 app.post("/api/admin/seed-products", async (req, res) => {
   const { adminToken } = req.body;
-  if (!adminToken || adminToken !== process.env.HOTMART_HOTTOK) {
+  const configuredAdminToken = process.env.ADMIN_TOKEN || process.env.HOTMART_HOTTOK;
+  if (!configuredAdminToken || !adminToken || adminToken !== configuredAdminToken) {
     return res.status(401).send("Unauthorized");
   }
 
-  const db = getFirestore();
+  const db = getAdminDb();
   try {
     const batch = db.batch();
     for (const p of PRODUCTS_TO_SEED) {
@@ -540,8 +545,8 @@ app.post("/api/admin/seed-products", async (req, res) => {
           uid: decodedToken.uid,
         },
         // We use the referrer URL to redirect back
-        success_url: `${req.headers.origin}/dashboard?success=true&product=${checkoutProduct.id}`,
-        cancel_url: `${req.headers.origin}/checkout/${checkoutProduct.id}?canceled=true`,
+        success_url: `${getAppUrl(req)}/dashboard?success=true&product=${checkoutProduct.id}`,
+        cancel_url: `${getAppUrl(req)}/checkout/${checkoutProduct.id}?canceled=true`,
       });
 
       res.json({ url: session.url });

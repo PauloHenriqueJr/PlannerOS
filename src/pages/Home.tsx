@@ -94,7 +94,7 @@ export default function Home() {
                 {t('browse_store')}
               </a>
               <a href="#planners" className="w-full sm:w-auto inline-flex items-center justify-center text-xs uppercase tracking-widest font-bold bg-sidebar/50 text-ink px-8 py-4 rounded-xl border border-line hover:bg-line/50 transition-all backdrop-blur-md">
-                 Ver Detalhes
+                 {t('view_details')}
               </a>
             </motion.div>
           </motion.div>
@@ -248,9 +248,9 @@ export default function Home() {
               <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-[10px] uppercase font-bold tracking-widest text-paper/50">
-                    {formatPrice(9.90, 29.90)} / {isPt ? 'mês' : 'month'}
+                    {formatPrice(9.90, 29.90)}
                   </div>
-                  <div className="bg-accent/20 text-accent px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">BEST VALUE</div>
+                  <div className="bg-accent/20 text-accent px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest">{t('best_value')}</div>
                 </div>
                 
                 <h3 className="font-serif text-3xl md:text-4xl font-bold mb-4 text-paper">{t('price_sub_t')}</h3>

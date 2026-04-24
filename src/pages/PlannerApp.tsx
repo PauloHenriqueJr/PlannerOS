@@ -825,7 +825,7 @@ function WeeklyMealView({ plannerId, userId, title, subtitle, storagePrefix, wha
 
 function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, howKey, emptyIcon }: any) {
   const docId = `${storagePrefix}_${plannerId}`;
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [data, setData, isSyncing] = useCloudSync<any>(docId, {
     startWeight: '80.0',
     goalWeight: '65.0',
@@ -841,7 +841,6 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, 
     e.preventDefault();
     if (!newWeight.trim()) return;
     
-    const { i18n } = useTranslation();
     const locale = i18n.language === 'pt' ? ptBR : enUS;
 
     const newLog = {
@@ -1317,7 +1316,7 @@ export default function PlannerApp() {
   
   if (!user) return <Navigate to="/login" replace />;
   
-  // LOGIC: Access granted if user owns the specific ID OR has the 'pro' subscription
+  // LOGIC: Access granted if user owns the specific ID OR has the Pro pass
   const hasAccess = purchasedIds.includes(id || '') || purchasedIds.includes('pro');
   
   if (!id || !hasAccess) {
@@ -1354,7 +1353,7 @@ export default function PlannerApp() {
                 <BookHeart size={20} strokeWidth={1.5} />
               </div>
               <div className="flex-1 overflow-hidden">
-                <p className="text-[10px] uppercase font-bold tracking-widest text-ink/50">Planner Atual</p>
+                <p className="text-[10px] uppercase font-bold tracking-widest text-ink/50">{t('current_planner')}</p>
                 <h3 className="font-serif italic font-bold text-base truncate text-ink">{t(product.nameKey)}</h3>
               </div>
             </div>
@@ -1368,12 +1367,12 @@ export default function PlannerApp() {
             {/* Scratchpad (Quick Notes) */}
             <div className={cn("bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[180px]", isScratchpadSyncing && "opacity-70")}>
               <div className="flex items-center justify-between mb-3 shrink-0">
-                <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent">Scratchpad</h4>
+                <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent">{t('scratchpad')}</h4>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent/60"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
               </div>
               <textarea 
                 className="w-full bg-transparent resize-none flex-1 outline-none text-sm text-ink/80 placeholder:text-ink/30 font-serif"
-                placeholder="Rascunhe ideias rápidas aqui..."
+                placeholder={t('scratchpad_placeholder')}
                 value={scratchpad}
                 onChange={(e) => setScratchpad(e.target.value)}
               />

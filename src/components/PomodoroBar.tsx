@@ -25,7 +25,7 @@ export default function PomodoroBar({
     <div
       data-pomodoro-shortcut="true"
       tabIndex={0}
-      className="flex items-center gap-2 sm:gap-3 bg-paper/90 border border-line rounded-full px-3 sm:px-4 py-2 shadow-lg dark:shadow-none backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+      className="planner-pomodoro-bar flex items-center gap-2 sm:gap-3 bg-paper/90 border border-line rounded-full px-3 sm:px-4 py-2 shadow-lg dark:shadow-none backdrop-blur outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       aria-label={t('pomodoro_label')}
     >
       <div className="hidden sm:block text-[9px] uppercase font-bold tracking-widest text-ink/45">{t('pomodoro_label')}</div>

@@ -11,8 +11,8 @@ export default function ProgressWidget({ completed, total, percent }: ProgressWi
   const { t } = useTranslation();
 
   return (
-    <div className="hidden sm:flex items-center gap-3 rounded-2xl border border-line bg-paper/90 px-4 py-3 shadow-lg dark:shadow-none backdrop-blur min-w-[220px]">
-      <div className="w-9 h-9 rounded-full bg-accent/10 border border-accent/25 flex items-center justify-center text-accent shrink-0">
+    <div className="planner-progress-widget hidden sm:flex items-center gap-3 rounded-2xl border border-line bg-paper/90 px-4 py-3 shadow-lg dark:shadow-none backdrop-blur min-w-[220px]">
+      <div className="planner-progress-icon w-9 h-9 rounded-full bg-accent/10 border border-accent/25 flex items-center justify-center text-accent shrink-0">
         <Target size={16} />
       </div>
       <div className="flex-1 min-w-0">

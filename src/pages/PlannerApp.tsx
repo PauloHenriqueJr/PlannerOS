@@ -1160,6 +1160,15 @@ const PLANNER_CONFIGS: Record<string, any> = {
   }
 };
 
+const PLANNER_LIGHT_THEMES: Record<string, [string, string, string]> = {
+  'adhd-planner-2026': ['#8BD8FF', '#FFF06A', '#FF8FC8'],
+  'it-girl-wellness': ['#FF9FCF', '#FFF0A6', '#87F0BD'],
+  'small-business-os': ['#9CFF57', '#67E8F9', '#D946EF'],
+  'undated-digital-planner': ['#FFCF6E', '#8EC5FF', '#FF9AA5'],
+  'meal-prep-weekly': ['#84F28B', '#FFBC73', '#FFE45C'],
+  'weight-loss-tracker': ['#65E4FF', '#A7F56E', '#45F5A7'],
+};
+
 function SidebarCalendar({
   selectedDate,
   onSelectDate,
@@ -1177,7 +1186,7 @@ function SidebarCalendar({
   const emptyDaysBefore = Array.from({ length: getDay(start) }, (_, index) => index);
 
   return (
-    <div className="bg-paper border border-line rounded-xl p-4 shadow-sm shrink-0">
+    <div className="planner-side-card bg-paper border border-line rounded-xl p-4 shadow-sm shrink-0">
       <div className="flex items-center justify-between mb-4">
         <button
           type="button"
@@ -1267,6 +1276,13 @@ export default function PlannerApp() {
     [config]
   );
   const dailyProgress = useDailyProgress(id, taskPrefixes);
+  const [themeA, themeB, themeC] = PLANNER_LIGHT_THEMES[id || ''] || ['#B8E1FF', '#FFF0A6', '#FF9FCF'];
+  const plannerThemeStyle = {
+    '--planner-a': themeA,
+    '--planner-b': themeB,
+    '--planner-c': themeC,
+    '--planner-color': activeTabConfig.color || themeA,
+  } as React.CSSProperties;
   const focusCurrentAddInput = useCallback(() => {
     window.dispatchEvent(new Event('planner:focus-add'));
   }, []);
@@ -1325,10 +1341,10 @@ export default function PlannerApp() {
   if (!product) return <Navigate to="/dashboard" replace />;
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full relative overflow-x-hidden">
+    <div className="planner-shell flex flex-col md:flex-row h-full w-full relative overflow-x-hidden" style={plannerThemeStyle}>
       {/* Mobile Topbar */}
       {!isFullscreen && (
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-line bg-sidebar shrink-0 shadow-sm z-10">
+        <div className="planner-mobile-topbar md:hidden flex items-center justify-between p-4 border-b border-line bg-sidebar shrink-0 shadow-sm z-10">
           <Link to="/dashboard" className="text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1">
             &larr; {t('back_library')}
           </Link>
@@ -1338,7 +1354,7 @@ export default function PlannerApp() {
 
       {/* Sidebar Navigator */}
       {!isFullscreen && (
-        <aside className="hidden md:flex w-72 border-r border-line bg-sidebar flex-col shrink-0 overflow-y-auto">
+        <aside className="planner-sidebar hidden md:flex w-72 border-r border-line bg-sidebar flex-col shrink-0 overflow-y-auto">
           {/* Header */}
           <div className="p-6 pb-2">
             <Link to="/dashboard" className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-ink/50 hover:text-accent transition-colors mb-6 group">
@@ -1348,8 +1364,8 @@ export default function PlannerApp() {
               {t('back_library')}
             </Link>
             
-            <div className="flex bg-paper border border-line rounded-xl p-3 items-center shadow-sm">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent mr-3 border border-accent/20">
+            <div className="planner-current-card flex bg-paper border border-line rounded-xl p-3 items-center shadow-sm">
+              <div className="planner-current-icon w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center text-accent mr-3 border border-accent/20">
                 <BookHeart size={20} strokeWidth={1.5} />
               </div>
               <div className="flex-1 overflow-hidden">
@@ -1365,7 +1381,7 @@ export default function PlannerApp() {
             <SidebarCalendar selectedDate={selectedDate} onSelectDate={handleSidebarDateSelect} />
 
             {/* Scratchpad (Quick Notes) */}
-            <div className={cn("bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[180px]", isScratchpadSyncing && "opacity-70")}>
+            <div className={cn("planner-side-card bg-accent/5 border border-accent/20 rounded-xl p-4 flex flex-col flex-1 min-h-[180px]", isScratchpadSyncing && "opacity-70")}>
               <div className="flex items-center justify-between mb-3 shrink-0">
                 <h4 className="text-[10px] uppercase font-bold tracking-widest text-accent">{t('scratchpad')}</h4>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent/60"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
@@ -1383,8 +1399,8 @@ export default function PlannerApp() {
           {/* Footer Promo */}
           <div className="p-6 pt-0 mt-auto">
             {!purchasedIds.includes('pro') && (
-              <div className="bg-paper border border-line rounded-xl p-3 flex items-center gap-3 shadow-sm">
-                <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
+              <div className="planner-side-card bg-paper border border-line rounded-xl p-3 flex items-center gap-3 shadow-sm">
+                <div className="planner-current-icon w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0">
                   <Sparkles size={15} />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -1402,7 +1418,7 @@ export default function PlannerApp() {
 
       {/* Main Planner Canvas */}
       <main className={cn(
-        "flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-2 md:p-4 transition-colors duration-500",
+        "planner-stage flex-1 flex flex-col items-center bg-canvas overflow-hidden p-0 sm:p-2 md:p-4 transition-colors duration-500",
         isFullscreen ? "p-0 h-full w-full" : "h-[calc(100vh-3.5rem)] md:h-full"
       )}>
         <div className={cn(
@@ -1412,7 +1428,7 @@ export default function PlannerApp() {
           
           {/* Main Paper / Content */}
           <div className={cn(
-            "flex-1 bg-paper shadow-2xl dark:shadow-none dark:border dark:border-line relative flex flex-col overflow-hidden z-20 transition-colors duration-500",
+            "planner-paper flex-1 bg-paper shadow-2xl dark:shadow-none dark:border dark:border-line relative flex flex-col overflow-hidden z-20 transition-colors duration-500",
             isFullscreen ? "rounded-none" : "rounded-lg sm:rounded-2xl"
           )}>
             {/* Binder Spine & Rings Effect */}
@@ -1455,9 +1471,8 @@ export default function PlannerApp() {
             
             <div 
               className={cn(
-                "flex-1 p-6 sm:p-10 md:p-16 pl-12 sm:pl-20 md:pl-24 pt-24 sm:pt-28 overflow-auto relative transition-colors duration-500"
+                "planner-content flex-1 p-6 sm:p-10 md:p-16 pl-12 sm:pl-20 md:pl-24 pt-24 sm:pt-28 overflow-auto relative transition-colors duration-500"
               )}
-              style={{ backgroundImage: 'radial-gradient(var(--border-line) 1px, transparent 1px)', backgroundSize: '20px 20px' }}
             >
               <ActiveComponent 
                 plannerId={id} 
@@ -1470,7 +1485,7 @@ export default function PlannerApp() {
             {/* Floating Fullscreen Toggle - Internal */}
             <button 
               onClick={toggleFullscreen} 
-              className="absolute bottom-6 left-6 z-50 w-10 h-10 rounded-full bg-paper/80 backdrop-blur border border-line shadow-lg dark:shadow-none flex items-center justify-center text-ink cursor-pointer hover:bg-accent/10 hover:text-accent transition-all"
+              className="planner-floating-control absolute bottom-6 left-6 z-50 w-10 h-10 rounded-full bg-paper/80 backdrop-blur border border-line shadow-lg dark:shadow-none flex items-center justify-center text-ink cursor-pointer hover:bg-accent/10 hover:text-accent transition-all"
             >
               {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
             </button>
@@ -1493,8 +1508,8 @@ export default function PlannerApp() {
                   className={cn(
                     "relative py-8 w-12 rounded-r-xl flex items-center justify-center transition-all duration-300 ease-in-out hover:pl-2 group overflow-hidden border-y border-r",
                     isActive 
-                      ? "z-30 w-16 shadow-[-5px_0_15px_rgba(0,0,0,0.15)] dark:shadow-none translate-x-0 border-line bg-paper" 
-                      : "z-0 opacity-100 hover:w-14 border-line/40 dark:border-line/20 bg-[var(--tab-color)] dark:bg-sidebar"
+                      ? "planner-active-tab z-30 w-16 shadow-[-5px_0_15px_rgba(0,0,0,0.15)] dark:shadow-none translate-x-0 border-line bg-paper" 
+                      : "planner-inactive-tab z-0 opacity-100 hover:w-14 border-line/40 dark:border-line/20 bg-[var(--tab-color)] dark:bg-sidebar"
                   )}
                 >
                   {/* Subtle tint in dark mode for inactive tabs */}

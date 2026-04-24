@@ -39,3 +39,87 @@ body {
   font-family: var(--font-sans);
   transition: background-color 0.5s ease, color 0.5s ease;
 }
+
+html:not(.dark) .planner-stage {
+  background:
+    radial-gradient(circle at 9% 12%, color-mix(in srgb, var(--planner-a) 62%, transparent) 0 20%, transparent 34%),
+    radial-gradient(circle at 92% 7%, color-mix(in srgb, var(--planner-b) 62%, transparent) 0 18%, transparent 32%),
+    radial-gradient(circle at 82% 88%, color-mix(in srgb, var(--planner-c) 54%, transparent) 0 22%, transparent 38%),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--planner-a) 42%, var(--bg-canvas)) 0%,
+      color-mix(in srgb, var(--planner-b) 34%, var(--bg-canvas)) 52%,
+      color-mix(in srgb, var(--planner-c) 38%, var(--bg-canvas)) 100%
+    );
+}
+
+html:not(.dark) .planner-shell {
+  --brand-accent: var(--planner-color);
+}
+
+html:not(.dark) .planner-sidebar,
+html:not(.dark) .planner-mobile-topbar {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--planner-a) 22%, var(--bg-sidebar)) 0%,
+      color-mix(in srgb, var(--planner-b) 13%, var(--bg-sidebar)) 46%,
+      color-mix(in srgb, var(--planner-c) 16%, var(--bg-sidebar)) 100%
+    );
+}
+
+html:not(.dark) .planner-paper {
+  background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.92),
+      color-mix(in srgb, var(--planner-b) 10%, #fffaf5) 48%,
+      color-mix(in srgb, var(--planner-c) 9%, #fffaf5)
+    );
+  border: 1px solid color-mix(in srgb, var(--planner-color) 26%, var(--border-line));
+  box-shadow:
+    0 30px 90px color-mix(in srgb, var(--planner-c) 30%, transparent),
+    0 18px 40px rgba(61, 61, 61, 0.12);
+}
+
+html:not(.dark) .planner-content {
+  background-color: color-mix(in srgb, var(--planner-b) 4%, rgba(255, 252, 247, 0.92));
+  background-image:
+    radial-gradient(color-mix(in srgb, var(--planner-color) 42%, var(--border-line)) 1px, transparent 1px),
+    linear-gradient(115deg, rgba(255,255,255,0.42), transparent 58%);
+  background-size: 20px 20px, 100% 100%;
+}
+
+html:not(.dark) .planner-content .bg-sidebar {
+  background-color: color-mix(in srgb, white 74%, var(--planner-a));
+}
+
+html:not(.dark) .planner-content .bg-line {
+  background-color: color-mix(in srgb, var(--planner-color) 22%, var(--border-line));
+}
+
+html:not(.dark) .planner-content .border-line {
+  border-color: color-mix(in srgb, var(--planner-color) 24%, var(--border-line));
+}
+
+html:not(.dark) .planner-current-card,
+html:not(.dark) .planner-side-card,
+html:not(.dark) .planner-progress-widget,
+html:not(.dark) .planner-pomodoro-bar,
+html:not(.dark) .planner-floating-control {
+  background: color-mix(in srgb, white 78%, var(--planner-b));
+  border-color: color-mix(in srgb, var(--planner-color) 30%, var(--border-line));
+}
+
+html:not(.dark) .planner-current-icon,
+html:not(.dark) .planner-progress-icon {
+  background: color-mix(in srgb, var(--planner-color) 20%, white);
+  border-color: color-mix(in srgb, var(--planner-color) 42%, var(--border-line));
+  color: color-mix(in srgb, var(--planner-color) 72%, #3d3d3d);
+}
+
+html:not(.dark) .planner-active-tab {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tab-color) 96%, white), color-mix(in srgb, var(--tab-color) 72%, var(--planner-b)));
+  border-color: color-mix(in srgb, var(--tab-color) 54%, var(--border-line));
+}
+
+html:not(.dark) .planner-inactive-tab {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tab-color) 86%, white), color-mix(in srgb, var(--tab-color) 58%, white));
+}

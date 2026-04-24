@@ -16,7 +16,7 @@ import {
 import { enUS, ptBR } from 'date-fns/locale';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '../lib/utils';
-import { Moon, Sun, Printer, Maximize, Minimize, Mic, MicOff, Brain, Coffee, Sparkles, Smile, ListChecks, Receipt, Briefcase, BookHeart, Target, ClipboardList, Trophy, HeartHandshake, Ruler } from 'lucide-react';
+import { Moon, Sun, Printer, Maximize, Minimize, Mic, MicOff, Brain, Coffee, Sparkles, Smile, ListChecks, Receipt, Briefcase, BookHeart, Target, ClipboardList, Trophy, HeartHandshake, Ruler, Pencil, Trash2, Check, X } from 'lucide-react';
 import EmptyStateGuide from '../components/EmptyStateGuide';
 import ViewHeader from '../components/ViewHeader';
 import PomodoroBar from '../components/PomodoroBar';
@@ -44,6 +44,8 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, 
 
   const [tasks, setTasks, isSyncing] = useCloudSync<Task[]>(docId, []);
   const [newTask, setNewTask] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTaskText, setEditingTaskText] = useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const addExample = (labelKey: string) => {
@@ -70,6 +72,23 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, 
 
   const removeTask = (id: string) => {
     setTasks((prev) => prev.filter(t => t.id !== id));
+  };
+
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditingTaskText(t(task.text));
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+    setEditingTaskText("");
+  };
+
+  const saveTask = (id: string) => {
+    const nextText = editingTaskText.trim();
+    if (!nextText) return;
+    setTasks((prev) => prev.map(task => task.id === id ? { ...task, text: nextText } : task));
+    cancelEditTask();
   };
 
   const completedCount = tasks.filter((t: Task) => t.completed).length;
@@ -185,29 +204,59 @@ function TaskView({ plannerId, userId, title, subtitle, storagePrefix, whatKey, 
             {tasks.length === 0 && !(whatKey || howKey || emptyExamples?.length) ? (
                <li className="text-sm opacity-50 italic">{t('no_tasks')}</li>
             ) : (
-              tasks.map((task: Task) => (
+              tasks.map((task: Task) => {
+                const isEditing = editingTaskId === task.id;
+                return (
                 <li key={task.id} className="flex items-center space-x-4 pb-4 border-b border-canvas group">
                   <button 
                     onClick={() => toggleTask(task.id)}
+                    type="button"
                     className={cn(
                       "w-5 h-5 rounded border-2 border-accent flex-shrink-0 transition-colors focus:outline-none",
                       task.completed ? "bg-accent" : "bg-transparent"
                     )}
                   />
-                  <span className={cn(
-                    "text-sm flex-1 transition-all",
-                    task.completed ? "line-through opacity-40" : "text-ink"
-                  )}>
-                    {t(task.text)}
-                  </span>
-                  <button 
-                     onClick={() => removeTask(task.id)}
-                     className="text-[10px] uppercase tracking-widest font-bold text-red-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {t('del_btn')}
-                  </button>
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingTaskText}
+                      onChange={(e) => setEditingTaskText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveTask(task.id);
+                        if (e.key === 'Escape') cancelEditTask();
+                      }}
+                      className="flex-1 border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                    />
+                  ) : (
+                    <span className={cn(
+                      "text-sm flex-1 transition-all",
+                      task.completed ? "line-through opacity-40" : "text-ink"
+                    )}>
+                      {t(task.text)}
+                    </span>
+                  )}
+                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                    {isEditing ? (
+                      <>
+                        <button type="button" onClick={() => saveTask(task.id)} className="p-2 text-accent hover:opacity-70" title={t('save_btn')} aria-label={t('save_btn')}>
+                          <Check size={15} />
+                        </button>
+                        <button type="button" onClick={cancelEditTask} className="p-2 text-ink/50 hover:text-ink" title={t('cancel_btn')} aria-label={t('cancel_btn')}>
+                          <X size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => startEditTask(task)} className="p-2 text-ink/50 hover:text-accent" title={t('edit_btn')} aria-label={t('edit_btn')}>
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => removeTask(task.id)} className="p-2 text-red-800/70 hover:text-red-800" title={t('del_btn')} aria-label={t('del_btn')}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </li>
-              ))
+              );
+              })
             )}
           </ul>
 
@@ -280,6 +329,8 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, whatKey
 
   const [habits, setHabits, isSyncing] = useCloudSync<{ id: string; name: string; days: Record<string, boolean> }[]>(docId, []);
   const [newHabit, setNewHabit] = useState("");
+  const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
+  const [editingHabitName, setEditingHabitName] = useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const addExample = (labelKey: string) => {
@@ -302,6 +353,23 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, whatKey
 
   const removeHabit = (id: string) => {
     setHabits((prev) => prev.filter(h => h.id !== id));
+  };
+
+  const startEditHabit = (habit: { id: string; name: string }) => {
+    setEditingHabitId(habit.id);
+    setEditingHabitName(t(habit.name));
+  };
+
+  const cancelEditHabit = () => {
+    setEditingHabitId(null);
+    setEditingHabitName("");
+  };
+
+  const saveHabit = (id: string) => {
+    const nextName = editingHabitName.trim();
+    if (!nextName) return;
+    setHabits((prev) => prev.map(habit => habit.id === id ? { ...habit, name: nextName } : habit));
+    cancelEditHabit();
   };
 
   const toggleDay = (habitId: string, dayPrefix: string) => {
@@ -350,15 +418,33 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, whatKey
             </tr>
           </thead>
           <tbody>
-            {habits.map((habit: any) => (
+            {habits.map((habit: any) => {
+              const isEditing = editingHabitId === habit.id;
+              return (
               <tr key={habit.id} className="border-t border-line group">
-                <td className="py-4 text-sm font-medium text-ink">{t(habit.name)}</td>
+                <td className="py-4 text-sm font-medium text-ink">
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingHabitName}
+                      onChange={(e) => setEditingHabitName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveHabit(habit.id);
+                        if (e.key === 'Escape') cancelEditHabit();
+                      }}
+                      className="w-full border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                    />
+                  ) : (
+                    t(habit.name)
+                  )}
+                </td>
                 {last7Days.map(date => {
                   const dayKey = format(date, 'yyyy-MM-dd');
                   const isDone = habit.days[dayKey];
                   return (
                     <td key={dayKey} className="py-4 text-center">
-                      <button 
+                      <button
+                        type="button"
                         onClick={() => toggleDay(habit.id, dayKey)}
                         className={cn(
                           "w-5 h-5 rounded border-2 border-accent flex items-center justify-center mx-auto transition-colors focus:outline-none",
@@ -371,15 +457,29 @@ function HabitsView({ plannerId, userId, title, subtitle, storagePrefix, whatKey
                   );
                 })}
                 <td className="py-4 text-right">
-                  <button 
-                    onClick={() => removeHabit(habit.id)}
-                    className="text-[10px] uppercase tracking-widest font-bold text-red-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {t('del_btn')}
-                  </button>
+                  <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                    {isEditing ? (
+                      <>
+                        <button type="button" onClick={() => saveHabit(habit.id)} className="p-2 text-accent hover:opacity-70" title={t('save_btn')} aria-label={t('save_btn')}>
+                          <Check size={15} />
+                        </button>
+                        <button type="button" onClick={cancelEditHabit} className="p-2 text-ink/50 hover:text-ink" title={t('cancel_btn')} aria-label={t('cancel_btn')}>
+                          <X size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => startEditHabit(habit)} className="p-2 text-ink/50 hover:text-accent" title={t('edit_btn')} aria-label={t('edit_btn')}>
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => removeHabit(habit.id)} className="p-2 text-red-800/70 hover:text-red-800" title={t('del_btn')} aria-label={t('del_btn')}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         {habits.length === 0 && (
@@ -427,6 +527,8 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
 
   const [newVal1, setNewVal1] = useState("");
   const [newVal2, setNewVal2] = useState("");
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState({ col1: "", col2: "" });
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const addExample = (pair: [string, string]) => {
@@ -452,6 +554,23 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
     setRows((prev) => prev.filter(r => r.id !== id));
   };
 
+  const startEditRow = (row: { id: string; col1: string; col2: string }) => {
+    setEditingRowId(row.id);
+    setEditingRow({ col1: t(row.col1), col2: t(row.col2) });
+  };
+
+  const cancelEditRow = () => {
+    setEditingRowId(null);
+    setEditingRow({ col1: "", col2: "" });
+  };
+
+  const saveRow = (id: string) => {
+    const nextCol1 = editingRow.col1.trim();
+    if (!nextCol1) return;
+    setRows((prev) => prev.map(row => row.id === id ? { ...row, col1: nextCol1, col2: editingRow.col2.trim() } : row));
+    cancelEditRow();
+  };
+
   useEffect(() => {
     const handleFocusRequest = () => inputRef.current?.focus();
     window.addEventListener('planner:focus-add', handleFocusRequest);
@@ -472,20 +591,65 @@ function TableDataView({ plannerId, userId, title, subtitle, storagePrefix, colu
             </tr>
           </thead>
           <tbody>
-            {rows.map((row: any) => (
+            {rows.map((row: any) => {
+              const isEditing = editingRowId === row.id;
+              return (
               <tr key={row.id} className="border-t border-line group">
-                <td className="py-4 text-sm font-medium text-ink">{t(row.col1)}</td>
-                <td className="py-4 text-sm font-serif italic text-ink text-center">{t(row.col2)}</td>
+                <td className="py-4 text-sm font-medium text-ink">
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={editingRow.col1}
+                      onChange={(e) => setEditingRow((current) => ({ ...current, col1: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRow(row.id);
+                        if (e.key === 'Escape') cancelEditRow();
+                      }}
+                      className="w-full border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                    />
+                  ) : (
+                    t(row.col1)
+                  )}
+                </td>
+                <td className="py-4 text-sm font-serif italic text-ink text-center">
+                  {isEditing ? (
+                    <input
+                      value={editingRow.col2}
+                      onChange={(e) => setEditingRow((current) => ({ ...current, col2: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveRow(row.id);
+                        if (e.key === 'Escape') cancelEditRow();
+                      }}
+                      className="w-full border-b border-accent bg-transparent py-1 text-center text-sm text-ink focus:outline-none"
+                    />
+                  ) : (
+                    t(row.col2)
+                  )}
+                </td>
                 <td className="py-4 text-right">
-                  <button 
-                    onClick={() => removeRow(row.id)}
-                    className="text-[10px] uppercase tracking-widest font-bold text-red-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    {t('del_btn')}
-                  </button>
+                  <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                    {isEditing ? (
+                      <>
+                        <button type="button" onClick={() => saveRow(row.id)} className="p-2 text-accent hover:opacity-70" title={t('save_btn')} aria-label={t('save_btn')}>
+                          <Check size={15} />
+                        </button>
+                        <button type="button" onClick={cancelEditRow} className="p-2 text-ink/50 hover:text-ink" title={t('cancel_btn')} aria-label={t('cancel_btn')}>
+                          <X size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" onClick={() => startEditRow(row)} className="p-2 text-ink/50 hover:text-accent" title={t('edit_btn')} aria-label={t('edit_btn')}>
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    <button type="button" onClick={() => removeRow(row.id)} className="p-2 text-red-800/70 hover:text-red-800" title={t('del_btn')} aria-label={t('del_btn')}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         {rows.length === 0 && (
@@ -835,6 +999,8 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, 
 
   const [newWeight, setNewWeight] = useState("");
   const [newNote, setNewNote] = useState("");
+  const [editingLogId, setEditingLogId] = useState<string | null>(null);
+  const [editingLog, setEditingLog] = useState({ date: "", weight: "", note: "" });
   const newWeightRef = React.useRef<HTMLInputElement>(null);
 
   const addLog = (e: React.FormEvent) => {
@@ -857,6 +1023,30 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, 
 
   const removeLog = (id: string) => {
     setData((prev: any) => ({ ...prev, logs: prev.logs.filter((l: any) => l.id !== id) }));
+  };
+
+  const startEditLog = (log: any) => {
+    setEditingLogId(log.id);
+    setEditingLog({ date: log.date || "", weight: log.weight || "", note: log.note || "" });
+  };
+
+  const cancelEditLog = () => {
+    setEditingLogId(null);
+    setEditingLog({ date: "", weight: "", note: "" });
+  };
+
+  const saveLog = (id: string) => {
+    const nextWeight = editingLog.weight.trim();
+    if (!nextWeight) return;
+    setData((prev: any) => ({
+      ...prev,
+      logs: prev.logs.map((log: any) => (
+        log.id === id
+          ? { ...log, date: editingLog.date.trim() || log.date, weight: nextWeight, note: editingLog.note.trim() }
+          : log
+      )),
+    }));
+    cancelEditLog();
   };
 
   useEffect(() => {
@@ -966,16 +1156,82 @@ function WeightTrackerView({ plannerId, userId, title, subtitle, storagePrefix, 
                 </tr>
               </thead>
               <tbody>
-                {data.logs.map((log: any) => (
+                {data.logs.map((log: any) => {
+                  const isEditing = editingLogId === log.id;
+                  return (
                   <tr key={log.id} className="border-t border-line/50 group hover:bg-sidebar transition-colors">
-                    <td className="py-4 text-sm font-sans text-ink pl-2">{log.date}</td>
-                    <td className="py-4 text-sm font-serif italic text-ink font-bold">{log.weight} {data.unit}</td>
-                    <td className="py-4 text-sm text-ink opacity-70">{log.note}</td>
+                    <td className="py-4 text-sm font-sans text-ink pl-2">
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          value={editingLog.date}
+                          onChange={(e) => setEditingLog((current) => ({ ...current, date: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveLog(log.id);
+                            if (e.key === 'Escape') cancelEditLog();
+                          }}
+                          className="w-full min-w-28 border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                        />
+                      ) : (
+                        log.date
+                      )}
+                    </td>
+                    <td className="py-4 text-sm font-serif italic text-ink font-bold">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.1"
+                          value={editingLog.weight}
+                          onChange={(e) => setEditingLog((current) => ({ ...current, weight: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveLog(log.id);
+                            if (e.key === 'Escape') cancelEditLog();
+                          }}
+                          className="w-24 border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                        />
+                      ) : (
+                        `${log.weight} ${data.unit}`
+                      )}
+                    </td>
+                    <td className="py-4 text-sm text-ink opacity-70">
+                      {isEditing ? (
+                        <input
+                          value={editingLog.note}
+                          onChange={(e) => setEditingLog((current) => ({ ...current, note: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveLog(log.id);
+                            if (e.key === 'Escape') cancelEditLog();
+                          }}
+                          className="w-full min-w-40 border-b border-accent bg-transparent py-1 text-sm text-ink focus:outline-none"
+                        />
+                      ) : (
+                        log.note
+                      )}
+                    </td>
                     <td className="py-4 text-right pr-2">
-                      <button onClick={() => removeLog(log.id)} className="text-[10px] uppercase tracking-widest font-bold text-red-800 opacity-0 group-hover:opacity-100 transition-opacity p-2">{t('del_btn')}</button>
+                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity">
+                        {isEditing ? (
+                          <>
+                            <button type="button" onClick={() => saveLog(log.id)} className="p-2 text-accent hover:opacity-70" title={t('save_btn')} aria-label={t('save_btn')}>
+                              <Check size={15} />
+                            </button>
+                            <button type="button" onClick={cancelEditLog} className="p-2 text-ink/50 hover:text-ink" title={t('cancel_btn')} aria-label={t('cancel_btn')}>
+                              <X size={15} />
+                            </button>
+                          </>
+                        ) : (
+                          <button type="button" onClick={() => startEditLog(log)} className="p-2 text-ink/50 hover:text-accent" title={t('edit_btn')} aria-label={t('edit_btn')}>
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removeLog(log.id)} className="p-2 text-red-800/70 hover:text-red-800" title={t('del_btn')} aria-label={t('del_btn')}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                );
+                })}
                 {data.logs.length === 0 && (
                   <tr><td colSpan={4} className="py-10 text-center text-sm font-serif italic opacity-50 border-t border-line/50">{t('no_logs')}</td></tr>
                 )}
